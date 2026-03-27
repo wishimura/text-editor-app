@@ -13,6 +13,49 @@ interface AiPanelProps {
   onClose: () => void;
 }
 
+function MessageContent({ text }: { text: string }) {
+  if (!text) return null;
+
+  // Split by code blocks (```...```)
+  const parts = text.split(/(```[\s\S]*?```)/g);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith('```') && part.endsWith('```')) {
+          // Extract code content (strip ``` and optional language tag)
+          const inner = part.slice(3, -3);
+          const firstNewline = inner.indexOf('\n');
+          const code = firstNewline >= 0 ? inner.slice(firstNewline + 1) : inner;
+
+          return (
+            <div key={i} className="ai-code-block">
+              <button
+                className="ai-code-copy"
+                onClick={() => {
+                  navigator.clipboard.writeText(code).then(() => {
+                    const btn = document.querySelector(`[data-copy-id="copy-${i}"]`);
+                    if (btn) {
+                      btn.textContent = 'Copied!';
+                      setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+                    }
+                  });
+                }}
+                data-copy-id={`copy-${i}`}
+              >
+                Copy
+              </button>
+              <pre className="ai-code-pre">{code}</pre>
+            </div>
+          );
+        }
+        // Regular text
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 export default function AiPanel({ visible, onClose }: AiPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -166,7 +209,9 @@ export default function AiPanel({ visible, onClose }: AiPanelProps) {
         {messages.map((msg, i) => (
           <div key={i} className={`ai-message ai-message-${msg.role}`}>
             <div className="ai-message-label">{msg.role === 'user' ? 'You' : 'AI'}</div>
-            <div className="ai-message-content">{msg.content || (isLoading && i === messages.length - 1 ? '...' : '')}</div>
+            <div className="ai-message-content">
+              {msg.content ? <MessageContent text={msg.content} /> : (isLoading && i === messages.length - 1 ? '...' : '')}
+            </div>
           </div>
         ))}
         <div ref={messagesEndRef} />

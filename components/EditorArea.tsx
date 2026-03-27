@@ -8,13 +8,15 @@ interface EditorAreaProps {
   onChange: (content: string) => void;
   onCursorChange: (line: number, col: number) => void;
   onListeningChange?: (listening: boolean) => void;
+  cursorInsertPos?: number | null;
+  onCursorInsertDone?: () => void;
 }
 
 const bracketPairs: Record<string, string> = {
   '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`',
 };
 
-export default function EditorArea({ content, onChange, onCursorChange, onListeningChange }: EditorAreaProps) {
+export default function EditorArea({ content, onChange, onCursorChange, onListeningChange, cursorInsertPos, onCursorInsertDone }: EditorAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const [cursorLine, setCursorLine] = useState(1);
@@ -134,6 +136,23 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
   useEffect(() => {
     updateCursor();
   }, [content, updateCursor]);
+
+  // Handle cursor positioning from parent (e.g., header insert)
+  useEffect(() => {
+    if (cursorInsertPos != null && textareaRef.current) {
+      const ta = textareaRef.current;
+      ta.focus();
+      // Place cursor at the date line, right after the date string (before the newline)
+      const pos = cursorInsertPos;
+      ta.selectionStart = ta.selectionEnd = pos;
+      cursorPosRef.current = pos;
+      // Scroll to cursor
+      ta.blur();
+      ta.focus();
+      updateCursor();
+      onCursorInsertDone?.();
+    }
+  }, [cursorInsertPos, onCursorInsertDone, updateCursor]);
 
   const lineNumbers = useMemo(() => {
     const nums = [];

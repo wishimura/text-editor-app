@@ -68,6 +68,22 @@ export default function Editor() {
     setVoiceNewDocMode(true);
   }, []);
 
+  const handleInsertHeader = useCallback(() => {
+    if (!activeDocId || !activeDoc) return;
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
+    const separator = '----------------------------------------';
+    // Build header: separator, date + space (cursor goes here), separator
+    const beforeCursor = `\n\n${separator}\n${dateStr} `;
+    const afterCursor = `\n${separator}\n`;
+    const newContent = activeDoc.content + beforeCursor + afterCursor;
+    updateContent(activeDocId, newContent);
+    // Cursor right after "YYYY/MM/DD " (title input position)
+    setCursorInsertPos(activeDoc.content.length + beforeCursor.length);
+  }, [activeDocId, activeDoc, updateContent]);
+
+  const [cursorInsertPos, setCursorInsertPos] = useState<number | null>(null);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -93,6 +109,10 @@ export default function Editor() {
         e.preventDefault();
         flushSave();
       }
+      if (mod && e.key === 'd') {
+        e.preventDefault();
+        handleInsertHeader();
+      }
       if (mod && e.key === 'i') {
         e.preventDefault();
         setAiPanelOpen(prev => !prev);
@@ -105,12 +125,13 @@ export default function Editor() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeDocId, closeTab, flushSave, handleCreateDocument]);
+  }, [activeDocId, closeTab, flushSave, handleCreateDocument, handleInsertHeader]);
 
   const commands = [
     { name: 'New File', shortcut: '⌘ ⇧ N', action: handleCreateDocument },
     { name: 'Toggle Sidebar', shortcut: '⌘ B', action: toggleSidebar },
     { name: 'Close Tab', shortcut: '⌘ ⇧ W', action: () => activeDocId && closeTab(activeDocId) },
+    { name: 'Insert Date Header', shortcut: '⌘ D', action: handleInsertHeader },
     { name: 'Save', shortcut: '⌘ S', action: flushSave },
     { name: 'Voice → New Document', shortcut: '', action: handleVoiceNewDoc },
     { name: 'AI Assistant', shortcut: '⌘ I', action: () => setAiPanelOpen(prev => !prev) },
@@ -158,6 +179,8 @@ export default function Editor() {
               onChange={handleContentChange}
               onCursorChange={handleCursorChange}
               onListeningChange={handleListeningChange}
+              cursorInsertPos={cursorInsertPos}
+              onCursorInsertDone={() => setCursorInsertPos(null)}
             />
           ) : (
             <div className="welcome-screen">

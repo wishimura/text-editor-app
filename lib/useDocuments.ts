@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { supabase } from './supabase';
+import { getSupabase } from './supabase';
 import { Document, getLangFromTitle } from './types';
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -17,7 +17,7 @@ export function useDocuments() {
 
   const fetchDocuments = useCallback(async () => {
     setIsLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('documents')
       .select('*')
       .order('updated_at', { ascending: false });
@@ -56,7 +56,7 @@ export function useDocuments() {
 
   const createDocument = useCallback(async (title: string) => {
     const language = getLangFromTitle(title);
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('documents')
       .insert({ title, content: '', language })
       .select()
@@ -72,7 +72,7 @@ export function useDocuments() {
   }, [openDocument]);
 
   const deleteDocument = useCallback(async (id: string) => {
-    const { error } = await supabase.from('documents').delete().eq('id', id);
+    const { error } = await getSupabase().from('documents').delete().eq('id', id);
     if (!error) {
       setDocuments(prev => prev.filter(d => d.id !== id));
       closeTab(id);
@@ -90,7 +90,7 @@ export function useDocuments() {
     setSaveStatus('saving');
 
     saveTimerRef.current = setTimeout(async () => {
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('documents')
         .update({ content, updated_at: new Date().toISOString() })
         .eq('id', id);
@@ -109,7 +109,7 @@ export function useDocuments() {
     if (activeDocId) {
       const content = localContentRef.current.get(activeDocId);
       if (content !== undefined) {
-        await supabase
+        await getSupabase()
           .from('documents')
           .update({ content, updated_at: new Date().toISOString() })
           .eq('id', activeDocId);

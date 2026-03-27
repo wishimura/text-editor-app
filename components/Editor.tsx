@@ -28,7 +28,10 @@ export default function Editor() {
     flushSave,
   } = useDocuments();
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') return window.innerWidth < 768;
+    return false;
+  });
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
   const [isListening, setIsListening] = useState(false);
@@ -89,31 +92,24 @@ export default function Editor() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
 
-      if (mod && e.shiftKey && e.key === 'p') {
+      // All shortcuts chosen to avoid Chrome conflicts
+      if (mod && e.shiftKey && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
         setCommandPaletteOpen(true);
       }
-      if (mod && e.key === 'b') {
+      if (mod && e.key === '\\') {
         e.preventDefault();
         setSidebarCollapsed(prev => !prev);
-      }
-      if (mod && e.shiftKey && e.key === 'n') {
-        e.preventDefault();
-        handleCreateDocument();
-      }
-      if (mod && e.shiftKey && e.key === 'w') {
-        e.preventDefault();
-        if (activeDocId) closeTab(activeDocId);
       }
       if (mod && e.key === 's') {
         e.preventDefault();
         flushSave();
       }
-      if (mod && e.key === 'd') {
+      if (mod && e.shiftKey && (e.key === 'l' || e.key === 'L')) {
         e.preventDefault();
         handleInsertHeader();
       }
-      if (mod && e.key === 'i') {
+      if (mod && e.key === '/') {
         e.preventDefault();
         setAiPanelOpen(prev => !prev);
       }
@@ -127,14 +123,18 @@ export default function Editor() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeDocId, closeTab, flushSave, handleCreateDocument, handleInsertHeader]);
 
+  const handleCloseActiveTab = useCallback(() => {
+    if (activeDocId) closeTab(activeDocId);
+  }, [activeDocId, closeTab]);
+
   const commands = [
-    { name: 'New File', shortcut: '⌘ ⇧ N', action: handleCreateDocument },
-    { name: 'Toggle Sidebar', shortcut: '⌘ B', action: toggleSidebar },
-    { name: 'Close Tab', shortcut: '⌘ ⇧ W', action: () => activeDocId && closeTab(activeDocId) },
-    { name: 'Insert Date Header', shortcut: '⌘ D', action: handleInsertHeader },
+    { name: 'New File', shortcut: '', action: handleCreateDocument },
+    { name: 'Close Tab', shortcut: '', action: handleCloseActiveTab },
+    { name: 'Toggle Sidebar', shortcut: '⌘ \\', action: toggleSidebar },
+    { name: 'Insert Date Header', shortcut: '⌘ ⇧ L', action: handleInsertHeader },
     { name: 'Save', shortcut: '⌘ S', action: flushSave },
     { name: 'Voice → New Document', shortcut: '', action: handleVoiceNewDoc },
-    { name: 'AI Assistant', shortcut: '⌘ I', action: () => setAiPanelOpen(prev => !prev) },
+    { name: 'AI Assistant', shortcut: '⌘ /', action: () => setAiPanelOpen(prev => !prev) },
   ];
 
   if (isLoading) {
@@ -154,7 +154,22 @@ export default function Editor() {
     <div className="app">
       <TitleBar fileName={titleFileName} onToggleSidebar={toggleSidebar} />
 
+      {/* Mobile toolbar */}
+      <div className="mobile-toolbar">
+        <button className="mobile-toolbar-btn" onClick={toggleSidebar}>Files</button>
+        <button className="mobile-toolbar-btn" onClick={handleInsertHeader}>+ Header</button>
+        <button className="mobile-toolbar-btn" onClick={() => setAiPanelOpen(prev => !prev)}>AI</button>
+        <button className="mobile-toolbar-btn" onClick={handleCreateDocument}>+ New</button>
+        <button className="mobile-toolbar-btn" onClick={handleVoiceNewDoc}>Voice</button>
+        <button className="mobile-toolbar-btn" onClick={flushSave}>Save</button>
+      </div>
+
       <div className="main-container">
+        {/* Sidebar overlay for mobile */}
+        <div
+          className={`sidebar-overlay${!sidebarCollapsed ? ' visible' : ''}`}
+          onClick={() => setSidebarCollapsed(true)}
+        />
         <Sidebar
           documents={documents}
           activeDocId={activeDocId}
@@ -188,15 +203,19 @@ export default function Editor() {
               <h2>Atom Editor</h2>
               <div className="shortcuts">
                 <div className="shortcut-row">
-                  <kbd>⌘ ⇧ N</kbd>
-                  <span>New File</span>
-                </div>
-                <div className="shortcut-row">
-                  <kbd>⌘ ⇧ P</kbd>
+                  <kbd>⌘ ⇧ K</kbd>
                   <span>Command Palette</span>
                 </div>
                 <div className="shortcut-row">
-                  <kbd>⌘ B</kbd>
+                  <kbd>⌘ ⇧ L</kbd>
+                  <span>Insert Date Header</span>
+                </div>
+                <div className="shortcut-row">
+                  <kbd>⌘ /</kbd>
+                  <span>AI Assistant</span>
+                </div>
+                <div className="shortcut-row">
+                  <kbd>⌘ \</kbd>
                   <span>Toggle Sidebar</span>
                 </div>
               </div>

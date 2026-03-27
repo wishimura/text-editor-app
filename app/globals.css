@@ -1147,3 +1147,227 @@ html, body {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ========================================
+   Mobile Toolbar
+   ======================================== */
+
+.mobile-toolbar {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--bg-dark);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.mobile-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-toolbar-btn {
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-toolbar-btn:active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ========================================
+   Responsive - Mobile
+   ======================================== */
+
+@media (max-width: 768px) {
+  :root {
+    --sidebar-width: 260px;
+    --title-height: 44px;
+    --status-height: 28px;
+    --tab-height: 38px;
+  }
+
+  .mobile-toolbar {
+    display: flex;
+  }
+
+  /* Title bar */
+  .title-bar {
+    padding: 0 8px;
+  }
+
+  .title-bar-center {
+    font-size: 11px;
+    max-width: 50%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Sidebar overlay */
+  .sidebar {
+    position: fixed;
+    top: var(--title-height);
+    left: 0;
+    bottom: var(--status-height);
+    z-index: 200;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    opacity: 1;
+  }
+
+  .sidebar:not(.collapsed) {
+    transform: translateX(0);
+  }
+
+  .sidebar.collapsed {
+    transform: translateX(-100%);
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    opacity: 1;
+    border-right: 1px solid var(--border);
+  }
+
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 199;
+  }
+
+  .sidebar-overlay.visible {
+    display: block;
+  }
+
+  /* Tab bar - scrollable */
+  .tab-bar {
+    flex-shrink: 0;
+  }
+
+  .tab {
+    min-width: 80px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  /* Editor */
+  .editor-textarea {
+    font-size: 15px;
+    padding: 8px 12px;
+    -webkit-text-size-adjust: none;
+  }
+
+  .line-numbers {
+    width: 40px;
+    min-width: 40px;
+    font-size: 12px;
+    padding-right: 8px;
+  }
+
+  /* Mic button */
+  .mic-btn {
+    width: 44px;
+    height: 44px;
+    bottom: 12px;
+    right: 12px;
+  }
+
+  /* Status bar */
+  .status-bar {
+    padding: 0 8px;
+  }
+
+  .status-item {
+    font-size: 10px;
+    padding: 0 4px;
+  }
+
+  /* AI Panel - full width */
+  .ai-panel {
+    width: 100%;
+    top: var(--title-height);
+  }
+
+  /* Command palette */
+  .command-palette {
+    width: 95vw;
+    margin-top: 20px;
+  }
+
+  .command-input {
+    font-size: 16px;
+    padding: 12px 14px;
+  }
+
+  /* Voice modal */
+  .voice-modal {
+    width: 95vw;
+  }
+
+  /* Welcome screen */
+  .welcome-screen kbd {
+    min-width: auto;
+    font-size: 11px;
+    padding: 2px 6px;
+  }
+
+  .welcome-screen .shortcut-row {
+    font-size: 12px;
+    gap: 8px;
+  }
+
+  /* Tree items larger tap targets */
+  .tree-item {
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+
+  .tree-item .delete-btn {
+    opacity: 1;
+    padding: 4px 8px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .title-bar-left .app-title {
+    display: none;
+  }
+
+  .line-numbers {
+    width: 32px;
+    min-width: 32px;
+    font-size: 11px;
+    padding-right: 6px;
+  }
+
+  .editor-textarea {
+    font-size: 14px;
+    padding: 8px;
+  }
+
+  .tab {
+    min-width: 60px;
+    max-width: 120px;
+    gap: 4px;
+  }
+
+  .tab .tab-icon {
+    display: none;
+  }
+}

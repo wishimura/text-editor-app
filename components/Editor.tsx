@@ -68,11 +68,11 @@ export default function Editor() {
         e.preventDefault();
         setSidebarCollapsed(prev => !prev);
       }
-      if (mod && e.key === 'n') {
+      if (mod && e.shiftKey && e.key === 'n') {
         e.preventDefault();
         handleCreateDocument();
       }
-      if (mod && e.key === 'w') {
+      if (mod && e.shiftKey && e.key === 'w') {
         e.preventDefault();
         if (activeDocId) closeTab(activeDocId);
       }
@@ -90,9 +90,9 @@ export default function Editor() {
   }, [activeDocId, closeTab, flushSave, handleCreateDocument]);
 
   const commands = [
-    { name: 'New File', shortcut: '⌘ N', action: handleCreateDocument },
+    { name: 'New File', shortcut: '⌘ ⇧ N', action: handleCreateDocument },
     { name: 'Toggle Sidebar', shortcut: '⌘ B', action: toggleSidebar },
-    { name: 'Close Tab', shortcut: '⌘ W', action: () => activeDocId && closeTab(activeDocId) },
+    { name: 'Close Tab', shortcut: '⌘ ⇧ W', action: () => activeDocId && closeTab(activeDocId) },
     { name: 'Save', shortcut: '⌘ S', action: flushSave },
   ];
 
@@ -144,7 +144,7 @@ export default function Editor() {
               <h2>Atom Editor</h2>
               <div className="shortcuts">
                 <div className="shortcut-row">
-                  <kbd>⌘ N</kbd>
+                  <kbd>⌘ ⇧ N</kbd>
                   <span>New File</span>
                 </div>
                 <div className="shortcut-row">

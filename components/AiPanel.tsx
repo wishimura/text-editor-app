@@ -18,7 +18,8 @@ export default function AiPanel({ visible, onClose }: AiPanelProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const isComposingRef = useRef(false);
 
   const {
     isSupported: micSupported,
@@ -132,6 +133,18 @@ export default function AiPanel({ visible, onClose }: AiPanelProps) {
     }
   }, [isListening, startMic, stopMic, input, transcript, handleSubmit]);
 
+  // Auto-resize textarea
+  const autoResize = useCallback(() => {
+    const ta = inputRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+  }, []);
+
+  useEffect(() => {
+    autoResize();
+  }, [input, autoResize]);
+
   if (!visible) return null;
 
   return (
@@ -146,6 +159,7 @@ export default function AiPanel({ visible, onClose }: AiPanelProps) {
           <div className="ai-empty">
             <p>Ask me anything about your documents.</p>
             <p className="ai-hint">I can read all your files and answer questions.</p>
+            <p className="ai-hint">Shift+Enter to send / Enter for new line</p>
           </div>
         )}
         {messages.map((msg, i) => (
@@ -158,15 +172,20 @@ export default function AiPanel({ visible, onClose }: AiPanelProps) {
       </div>
 
       <div className="ai-input-area">
-        <input
+        <textarea
           ref={inputRef}
-          type="text"
-          className="ai-input"
-          placeholder={isListening ? 'Listening...' : 'Ask about your documents...'}
+          className="ai-input ai-textarea"
+          placeholder={isListening ? 'Listening...' : 'Ask about your documents... (Shift+Enter to send)'}
           value={input + (isListening ? interimTranscript : '')}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value);
+          }}
+          onCompositionStart={() => { isComposingRef.current = true; }}
+          onCompositionEnd={() => { isComposingRef.current = false; }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            // Don't send during IME composition (e.g. Japanese input)
+            if (isComposingRef.current) return;
+            if (e.key === 'Enter' && e.shiftKey) {
               e.preventDefault();
               handleSubmit();
             }
@@ -174,6 +193,7 @@ export default function AiPanel({ visible, onClose }: AiPanelProps) {
           }}
           disabled={isLoading}
           autoComplete="off"
+          rows={1}
         />
         {micSupported && (
           <button

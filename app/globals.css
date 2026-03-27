@@ -1099,6 +1099,14 @@ html, body {
   color: var(--text-muted);
 }
 
+.ai-textarea {
+  resize: none;
+  min-height: 34px;
+  max-height: 120px;
+  line-height: 1.4;
+  overflow-y: auto;
+}
+
 .ai-mic-btn {
   width: 34px;
   height: 34px;

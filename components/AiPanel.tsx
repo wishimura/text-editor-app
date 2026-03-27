@@ -57,14 +57,15 @@ export default function AiPanel({ visible, onClose }: AiPanelProps) {
 
     setInput('');
     prevTranscriptRef.current = '';
-    setMessages(prev => [...prev, { role: 'user', content: question }]);
+    const newMessages: Message[] = [...messages, { role: 'user', content: question }];
+    setMessages(newMessages);
     setIsLoading(true);
 
     try {
       const res = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ messages: newMessages }),
       });
 
       if (!res.ok) {
@@ -159,7 +160,7 @@ export default function AiPanel({ visible, onClose }: AiPanelProps) {
           <div className="ai-empty">
             <p>Ask me anything about your documents.</p>
             <p className="ai-hint">I can read all your files and answer questions.</p>
-            <p className="ai-hint">Shift+Enter to send / Enter for new line</p>
+            <p className="ai-hint">Enter to send / Shift+Enter for new line</p>
           </div>
         )}
         {messages.map((msg, i) => (
@@ -175,7 +176,7 @@ export default function AiPanel({ visible, onClose }: AiPanelProps) {
         <textarea
           ref={inputRef}
           className="ai-input ai-textarea"
-          placeholder={isListening ? 'Listening...' : 'Ask about your documents... (Shift+Enter to send)'}
+          placeholder={isListening ? 'Listening...' : 'Ask about your documents... (Enter to send)'}
           value={input + (isListening ? interimTranscript : '')}
           onChange={(e) => {
             setInput(e.target.value);
@@ -185,10 +186,11 @@ export default function AiPanel({ visible, onClose }: AiPanelProps) {
           onKeyDown={(e) => {
             // Don't send during IME composition (e.g. Japanese input)
             if (isComposingRef.current) return;
-            if (e.key === 'Enter' && e.shiftKey) {
+            if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
               handleSubmit();
             }
+            // Shift+Enter = newline (default textarea behavior, no preventDefault)
             if (e.key === 'Escape') onClose();
           }}
           disabled={isLoading}

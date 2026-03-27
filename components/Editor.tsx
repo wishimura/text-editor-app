@@ -8,6 +8,7 @@ import TabBar from './TabBar';
 import EditorArea from './EditorArea';
 import StatusBar from './StatusBar';
 import CommandPalette from './CommandPalette';
+import VoiceNewDoc from './VoiceNewDoc';
 
 export default function Editor() {
   const {
@@ -29,6 +30,8 @@ export default function Editor() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
+  const [isListening, setIsListening] = useState(false);
+  const [voiceNewDocMode, setVoiceNewDocMode] = useState(false);
 
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed(prev => !prev);
@@ -54,6 +57,14 @@ export default function Editor() {
       updateContent(activeDocId, content);
     }
   }, [activeDocId, updateContent]);
+
+  const handleListeningChange = useCallback((listening: boolean) => {
+    setIsListening(listening);
+  }, []);
+
+  const handleVoiceNewDoc = useCallback(() => {
+    setVoiceNewDocMode(true);
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -94,6 +105,7 @@ export default function Editor() {
     { name: 'Toggle Sidebar', shortcut: '⌘ B', action: toggleSidebar },
     { name: 'Close Tab', shortcut: '⌘ ⇧ W', action: () => activeDocId && closeTab(activeDocId) },
     { name: 'Save', shortcut: '⌘ S', action: flushSave },
+    { name: 'Voice → New Document', shortcut: '', action: handleVoiceNewDoc },
   ];
 
   if (isLoading) {
@@ -137,6 +149,7 @@ export default function Editor() {
               content={activeDoc.content}
               onChange={handleContentChange}
               onCursorChange={handleCursorChange}
+              onListeningChange={handleListeningChange}
             />
           ) : (
             <div className="welcome-screen">
@@ -166,12 +179,25 @@ export default function Editor() {
         col={cursorPos.col}
         language={activeDoc?.language || 'plaintext'}
         saveStatus={saveStatus}
+        isListening={isListening}
       />
 
       <CommandPalette
         visible={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
         commands={commands}
+      />
+
+      <VoiceNewDoc
+        visible={voiceNewDocMode}
+        onClose={() => setVoiceNewDocMode(false)}
+        onComplete={async (text) => {
+          const timestamp = new Date().toLocaleString('ja-JP');
+          const doc = await createDocument(`voice-${Date.now()}.md`);
+          if (doc) {
+            updateContent(doc.id, `# Voice Note - ${timestamp}\n\n${text}\n`);
+          }
+        }}
       />
     </div>
   );

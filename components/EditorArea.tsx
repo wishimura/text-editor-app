@@ -1,21 +1,74 @@
 'use client';
 
 import { useRef, useEffect, useCallback, useState, KeyboardEvent, useMemo } from 'react';
+import { useSpeechRecognition } from '@/lib/useSpeechRecognition';
 
 interface EditorAreaProps {
   content: string;
   onChange: (content: string) => void;
   onCursorChange: (line: number, col: number) => void;
+  onListeningChange?: (listening: boolean) => void;
 }
 
 const bracketPairs: Record<string, string> = {
   '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`',
 };
 
-export default function EditorArea({ content, onChange, onCursorChange }: EditorAreaProps) {
+export default function EditorArea({ content, onChange, onCursorChange, onListeningChange }: EditorAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const [cursorLine, setCursorLine] = useState(1);
+  const cursorPosRef = useRef(0);
+
+  const {
+    isSupported,
+    isListening,
+    transcript,
+    interimTranscript,
+    start: startListening,
+    stop: stopListening,
+  } = useSpeechRecognition();
+
+  // Notify parent about listening state
+  useEffect(() => {
+    onListeningChange?.(isListening);
+  }, [isListening, onListeningChange]);
+
+  // Insert finalized transcript at cursor position
+  const prevTranscriptRef = useRef('');
+  useEffect(() => {
+    if (transcript && transcript !== prevTranscriptRef.current) {
+      prevTranscriptRef.current = transcript;
+      const ta = textareaRef.current;
+      if (!ta) return;
+      const pos = cursorPosRef.current;
+      const before = content.substring(0, pos);
+      const after = content.substring(pos);
+      const newContent = before + transcript + after;
+      onChange(newContent);
+      // Move cursor after inserted text
+      requestAnimationFrame(() => {
+        if (ta) {
+          ta.selectionStart = ta.selectionEnd = pos + transcript.length;
+          cursorPosRef.current = pos + transcript.length;
+        }
+      });
+    }
+  }, [transcript, content, onChange]);
+
+  // Reset prev transcript when starting new session
+  const handleMicClick = useCallback(() => {
+    if (isListening) {
+      stopListening();
+    } else {
+      prevTranscriptRef.current = '';
+      // Remember cursor position before starting
+      if (textareaRef.current) {
+        cursorPosRef.current = textareaRef.current.selectionStart;
+      }
+      startListening();
+    }
+  }, [isListening, startListening, stopListening]);
 
   const lineCount = useMemo(() => content.split('\n').length, [content]);
 
@@ -24,6 +77,7 @@ export default function EditorArea({ content, onChange, onCursorChange }: Editor
     if (!ta) return;
     const text = ta.value;
     const pos = ta.selectionStart;
+    cursorPosRef.current = pos;
     const lines = text.substring(0, pos).split('\n');
     const line = lines.length;
     const col = lines[lines.length - 1].length + 1;
@@ -41,7 +95,6 @@ export default function EditorArea({ content, onChange, onCursorChange }: Editor
     const ta = textareaRef.current;
     if (!ta) return;
 
-    // Tab key
     if (e.key === 'Tab') {
       e.preventDefault();
       const start = ta.selectionStart;
@@ -54,7 +107,6 @@ export default function EditorArea({ content, onChange, onCursorChange }: Editor
       return;
     }
 
-    // Auto-close brackets
     if (bracketPairs[e.key]) {
       const start = ta.selectionStart;
       const end = ta.selectionEnd;
@@ -83,7 +135,6 @@ export default function EditorArea({ content, onChange, onCursorChange }: Editor
     updateCursor();
   }, [content, updateCursor]);
 
-  // Line numbers
   const lineNumbers = useMemo(() => {
     const nums = [];
     for (let i = 1; i <= Math.max(lineCount, 1); i++) {
@@ -117,6 +168,33 @@ export default function EditorArea({ content, onChange, onCursorChange }: Editor
         wrap="off"
         placeholder="Start typing..."
       />
+
+      {/* Interim transcript preview */}
+      {isListening && interimTranscript && (
+        <div className="voice-preview">{interimTranscript}</div>
+      )}
+
+      {/* Mic button */}
+      {isSupported && (
+        <button
+          className={`mic-btn${isListening ? ' listening' : ''}`}
+          onClick={handleMicClick}
+          title={isListening ? 'Stop voice input' : 'Start voice input'}
+        >
+          {isListening ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="6" y="6" width="12" height="12" rx="2" />
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" y1="19" x2="12" y2="23" />
+              <line x1="8" y1="23" x2="16" y2="23" />
+            </svg>
+          )}
+        </button>
+      )}
     </div>
   );
 }

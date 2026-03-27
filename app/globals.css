@@ -692,3 +692,237 @@ html, body {
 ::selection {
   background: rgba(108, 99, 255, 0.35);
 }
+
+/* ========================================
+   Mic Button (floating in editor)
+   ======================================== */
+
+.mic-btn {
+  position: absolute;
+  bottom: 16px;
+  right: 24px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-light);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.mic-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.mic-btn.listening {
+  background: var(--red);
+  color: #fff;
+  animation: micPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 85, 85, 0.5); }
+  50% { box-shadow: 0 0 0 12px rgba(255, 85, 85, 0); }
+}
+
+/* Voice preview (inline interim text) */
+
+.voice-preview {
+  position: absolute;
+  bottom: 64px;
+  right: 24px;
+  max-width: 300px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  animation: fadeIn 0.15s ease;
+}
+
+/* ========================================
+   Voice New Doc Modal
+   ======================================== */
+
+.voice-modal {
+  width: 480px;
+  max-width: 90vw;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  animation: fadeIn 0.2s ease;
+}
+
+.voice-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.voice-modal-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.voice-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.voice-modal-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.voice-modal-body {
+  padding: 20px;
+}
+
+.voice-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.voice-indicator.active {
+  color: var(--red);
+}
+
+.voice-pulse {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.voice-indicator.active .voice-pulse {
+  background: var(--red);
+  animation: micPulse 1.5s ease-in-out infinite;
+}
+
+.voice-transcript-box {
+  min-height: 120px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--bg-medium);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+.voice-placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.voice-interim {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.voice-error {
+  color: var(--red);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.voice-modal-footer {
+  display: flex;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  justify-content: flex-end;
+}
+
+.voice-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-light);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.voice-btn:hover {
+  background: var(--bg-hover);
+}
+
+.voice-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.voice-btn-stop {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+
+.voice-btn-stop:hover {
+  background: #e04444;
+}
+
+.voice-btn-save {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.voice-btn-save:hover {
+  background: var(--accent-hover);
+}
+
+/* ========================================
+   Status Bar Recording Indicator
+   ======================================== */
+
+.status-recording {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.recording-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  animation: recordBlink 1s ease-in-out infinite;
+}
+
+@keyframes recordBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}

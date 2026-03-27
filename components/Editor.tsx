@@ -9,6 +9,7 @@ import EditorArea from './EditorArea';
 import StatusBar from './StatusBar';
 import CommandPalette from './CommandPalette';
 import VoiceNewDoc from './VoiceNewDoc';
+import AiPanel from './AiPanel';
 
 export default function Editor() {
   const {
@@ -32,6 +33,7 @@ export default function Editor() {
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
   const [isListening, setIsListening] = useState(false);
   const [voiceNewDocMode, setVoiceNewDocMode] = useState(false);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
 
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed(prev => !prev);
@@ -91,8 +93,13 @@ export default function Editor() {
         e.preventDefault();
         flushSave();
       }
+      if (mod && e.key === 'i') {
+        e.preventDefault();
+        setAiPanelOpen(prev => !prev);
+      }
       if (e.key === 'Escape') {
         setCommandPaletteOpen(false);
+        setAiPanelOpen(false);
       }
     };
 
@@ -106,6 +113,7 @@ export default function Editor() {
     { name: 'Close Tab', shortcut: '⌘ ⇧ W', action: () => activeDocId && closeTab(activeDocId) },
     { name: 'Save', shortcut: '⌘ S', action: flushSave },
     { name: 'Voice → New Document', shortcut: '', action: handleVoiceNewDoc },
+    { name: 'AI Assistant', shortcut: '⌘ I', action: () => setAiPanelOpen(prev => !prev) },
   ];
 
   if (isLoading) {
@@ -173,6 +181,11 @@ export default function Editor() {
           )}
         </div>
       </div>
+
+      <AiPanel
+        visible={aiPanelOpen}
+        onClose={() => setAiPanelOpen(false)}
+      />
 
       <StatusBar
         line={cursorPos.line}

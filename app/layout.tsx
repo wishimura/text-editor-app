@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Atom Editor',
+  title: 'Citrus Editor',
   description: 'A fast, lightweight text editor in the browser',
 };
 

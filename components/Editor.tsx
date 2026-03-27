@@ -148,7 +148,7 @@ export default function Editor() {
 
   const titleFileName = activeDoc
     ? activeDoc.title
-    : 'Atom Editor';
+    : 'Citrus Editor';
 
   return (
     <div className="app">
@@ -199,8 +199,8 @@ export default function Editor() {
             />
           ) : (
             <div className="welcome-screen">
-              <div className="logo">⚛</div>
-              <h2>Atom Editor</h2>
+              <div className="logo">🍋</div>
+              <h2>Citrus Editor</h2>
               <div className="shortcuts">
                 <div className="shortcut-row">
                   <kbd>⌘ ⇧ K</kbd>

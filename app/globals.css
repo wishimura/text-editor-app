@@ -44,6 +44,7 @@ html, body {
   color: var(--text-primary);
   font-size: 13px;
   -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
 }
 
 .app {
@@ -51,6 +52,9 @@ html, body {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  overscroll-behavior: none;
+  position: fixed;
+  inset: 0;
 }
 
 /* ========================================
@@ -401,6 +405,7 @@ html, body {
   overflow: hidden;
   background: var(--bg-medium);
   position: relative;
+  overscroll-behavior: none;
 }
 
 /* Line Numbers */
@@ -448,6 +453,7 @@ html, body {
   -moz-tab-size: 2;
   caret-color: var(--accent);
   white-space: pre;
+  overscroll-behavior: contain;
 }
 
 .editor-textarea::placeholder {

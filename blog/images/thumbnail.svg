@@ -100,24 +100,8 @@
     <rect x="0" y="342" width="420" height="8" rx="0" ry="0" fill="#1a1a2e"/>
   </g>
 
-  <!-- Company logo: CitrusApp -->
-  <g transform="translate(80, 120)">
-    <!-- Citrus fan icon -->
-    <g transform="translate(0, 0)">
-      <path d="M16 0 C16 0, 28 -4, 28 -20" stroke="#3a9b4a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <path d="M16 0 C16 0, 8 -10, 16 -24" stroke="#3a9b4a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <path d="M16 0 C16 0, -2 -6, 2 -22" stroke="#3a9b4a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <path d="M16 0 C16 0, 24 -10, 36 -18" stroke="#3a9b4a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <path d="M16 0 C16 0, -6 -2, -10 -16" stroke="#3a9b4a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <!-- Leaf tips -->
-      <ellipse cx="28" cy="-22" rx="4" ry="7" fill="#3a9b4a" transform="rotate(15, 28, -22)"/>
-      <ellipse cx="16" cy="-26" rx="4" ry="7" fill="#3a9b4a" transform="rotate(0, 16, -26)"/>
-      <ellipse cx="2" cy="-24" rx="4" ry="7" fill="#3a9b4a" transform="rotate(-15, 2, -24)"/>
-      <ellipse cx="37" cy="-20" rx="4" ry="6" fill="#3a9b4a" transform="rotate(25, 37, -20)"/>
-      <ellipse cx="-10" cy="-18" rx="4" ry="6" fill="#3a9b4a" transform="rotate(-25, -10, -18)"/>
-    </g>
-    <text x="0" y="24" class="font-ui" fill="#3a9b4a" font-size="28" font-weight="700">CitrusApp</text>
-  </g>
+  <!-- Company logo: CitrusApp (actual PNG) -->
+  <image x="80" y="88" width="200" height="58" href="data:image/png;base64,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"/>
 
   <!-- Product name -->
   <text x="80" y="220" class="font-ui" fill="#c8c8e0" font-size="52" font-weight="700">Citrus Editor</text>
@@ -142,7 +126,7 @@
   <text x="370" y="339" class="font-ui" fill="#6c63ff" font-size="12" text-anchor="middle">Claude AI</text>
 
   <!-- Category label -->
-  <text x="80" y="90" class="font-ui" fill="#6c63ff" font-size="14" font-weight="600" letter-spacing="2">WORKS</text>
+  <text x="80" y="80" class="font-ui" fill="#6c63ff" font-size="14" font-weight="600" letter-spacing="2">WORKS</text>
 
   <!-- Bottom border -->
   <rect x="0" y="624" width="1200" height="6" fill="url(#accent-grad)" opacity="0.6"/>

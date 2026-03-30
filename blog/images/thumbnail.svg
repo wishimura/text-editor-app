@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <style>
+      .font-ui { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif; }
+      .font-mono { font-family: 'SF Mono', 'Consolas', monospace; }
+    </style>
+    <linearGradient id="bg-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#16162a"/>
+    </linearGradient>
+    <linearGradient id="accent-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6c63ff"/>
+      <stop offset="100%" stop-color="#7b73ff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg-grad)"/>
+
+  <!-- Subtle grid pattern -->
+  <g opacity="0.03">
+    <line x1="0" y1="0" x2="0" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="60" y1="0" x2="60" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="120" y1="0" x2="120" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="180" y1="0" x2="180" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="240" y1="0" x2="240" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="300" y1="0" x2="300" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="360" y1="0" x2="360" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="420" y1="0" x2="420" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="480" y1="0" x2="480" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="540" y1="0" x2="540" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="600" y1="0" x2="600" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="660" y1="0" x2="660" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="720" y1="0" x2="720" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="780" y1="0" x2="780" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="840" y1="0" x2="840" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="900" y1="0" x2="900" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="960" y1="0" x2="960" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="1020" y1="0" x2="1020" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="1080" y1="0" x2="1080" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="1140" y1="0" x2="1140" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="1200" y1="0" x2="1200" y2="630" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="0" y1="60" x2="1200" y2="60" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="0" y1="120" x2="1200" y2="120" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="0" y1="180" x2="1200" y2="180" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="0" y1="240" x2="1200" y2="240" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="0" y1="300" x2="1200" y2="300" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="0" y1="360" x2="1200" y2="360" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="0" y1="420" x2="1200" y2="420" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="0" y1="480" x2="1200" y2="480" stroke="#6c63ff" stroke-width="1"/>
+    <line x1="0" y1="540" x2="1200" y2="540" stroke="#6c63ff" stroke-width="1"/>
+  </g>
+
+  <!-- Decorative accent glow -->
+  <circle cx="200" cy="315" r="300" fill="#6c63ff" opacity="0.04"/>
+  <circle cx="1000" cy="315" r="250" fill="#6c63ff" opacity="0.03"/>
+
+  <!-- Mini editor window preview (right side) -->
+  <g transform="translate(700, 140)">
+    <rect width="420" height="350" rx="8" fill="#1e1e32" stroke="#2d2d50" stroke-width="1"/>
+    <!-- Window bar -->
+    <rect width="420" height="28" rx="8" fill="#1a1a2e"/>
+    <rect y="16" width="420" height="12" fill="#1a1a2e"/>
+    <circle cx="16" cy="14" r="4" fill="#ff5555" opacity="0.7"/>
+    <circle cx="30" cy="14" r="4" fill="#f1fa8c" opacity="0.7"/>
+    <circle cx="44" cy="14" r="4" fill="#50fa7b" opacity="0.7"/>
+    <text x="210" y="18" class="font-ui" fill="#8888aa" font-size="9" text-anchor="middle">Citrus Editor</text>
+    <line x1="0" y1="28" x2="420" y2="28" stroke="#2d2d50" stroke-width="0.5"/>
+
+    <!-- Mini sidebar -->
+    <rect x="0" y="28" width="80" height="322" fill="#1a1a2e" rx="0"/>
+    <line x1="80" y1="28" x2="80" y2="350" stroke="#2d2d50" stroke-width="0.5"/>
+    <rect x="4" y="50" width="72" height="14" rx="2" fill="#3a3a65"/>
+    <rect x="4" y="68" width="72" height="14" rx="2" fill="transparent"/>
+    <rect x="4" y="86" width="72" height="14" rx="2" fill="transparent"/>
+
+    <!-- Mini code lines -->
+    <rect x="92" y="44" width="120" height="8" rx="2" fill="#c8c8e0" opacity="0.3"/>
+    <rect x="92" y="58" width="180" height="8" rx="2" fill="#c8c8e0" opacity="0.2"/>
+    <rect x="92" y="72" width="90" height="8" rx="2" fill="#6c63ff" opacity="0.3"/>
+    <rect x="92" y="86" width="200" height="8" rx="2" fill="#c8c8e0" opacity="0.2"/>
+    <rect x="92" y="100" width="150" height="8" rx="2" fill="#c8c8e0" opacity="0.3"/>
+    <rect x="92" y="114" width="100" height="8" rx="2" fill="#f1fa8c" opacity="0.2"/>
+    <rect x="92" y="128" width="170" height="8" rx="2" fill="#c8c8e0" opacity="0.2"/>
+    <rect x="92" y="142" width="130" height="8" rx="2" fill="#c8c8e0" opacity="0.3"/>
+    <rect x="92" y="156" width="160" height="8" rx="2" fill="#c8c8e0" opacity="0.2"/>
+
+    <!-- Mini AI panel -->
+    <rect x="280" y="28" width="140" height="322" fill="#1a1a2e" rx="0"/>
+    <line x1="280" y1="28" x2="280" y2="350" stroke="#2d2d50" stroke-width="0.5"/>
+    <!-- AI messages -->
+    <rect x="300" y="50" width="100" height="20" rx="6" fill="#6c63ff" opacity="0.15"/>
+    <rect x="290" y="80" width="120" height="50" rx="6" fill="#252540"/>
+    <rect x="296" y="90" width="80" height="6" rx="1" fill="#c8c8e0" opacity="0.3"/>
+    <rect x="296" y="100" width="100" height="6" rx="1" fill="#c8c8e0" opacity="0.2"/>
+    <rect x="296" y="110" width="60" height="6" rx="1" fill="#c8c8e0" opacity="0.2"/>
+
+    <!-- Mini status bar -->
+    <rect x="0" y="340" width="420" height="10" rx="0" fill="#1a1a2e"/>
+    <rect x="0" y="342" width="420" height="8" rx="0" ry="0" fill="#1a1a2e"/>
+  </g>
+
+  <!-- Text content (left side) -->
+  <text x="80" y="220" class="font-ui" fill="#c8c8e0" font-size="52" font-weight="700">Citrus Editor</text>
+  <text x="80" y="220" class="font-ui" fill="#c8c8e0" font-size="52" font-weight="700" opacity="0">Citrus Editor</text>
+
+  <!-- Lemon icon -->
+  <text x="470" y="222" font-size="48">🍋</text>
+
+  <!-- Subtitle -->
+  <text x="80" y="270" class="font-ui" fill="#8888aa" font-size="22">AI搭載 ・ 音声入力対応 ・ クラウド保存</text>
+
+  <!-- Accent line -->
+  <rect x="80" y="290" width="60" height="3" rx="1.5" fill="url(#accent-grad)"/>
+
+  <!-- Tag pills -->
+  <rect x="80" y="320" width="72" height="28" rx="14" fill="#6c63ff" opacity="0.15" stroke="#6c63ff" stroke-width="1" stroke-opacity="0.3"/>
+  <text x="116" y="339" class="font-ui" fill="#6c63ff" font-size="12" text-anchor="middle">Next.js</text>
+
+  <rect x="164" y="320" width="60" height="28" rx="14" fill="#6c63ff" opacity="0.15" stroke="#6c63ff" stroke-width="1" stroke-opacity="0.3"/>
+  <text x="194" y="339" class="font-ui" fill="#6c63ff" font-size="12" text-anchor="middle">React</text>
+
+  <rect x="236" y="320" width="82" height="28" rx="14" fill="#6c63ff" opacity="0.15" stroke="#6c63ff" stroke-width="1" stroke-opacity="0.3"/>
+  <text x="277" y="339" class="font-ui" fill="#6c63ff" font-size="12" text-anchor="middle">Supabase</text>
+
+  <rect x="330" y="320" width="80" height="28" rx="14" fill="#6c63ff" opacity="0.15" stroke="#6c63ff" stroke-width="1" stroke-opacity="0.3"/>
+  <text x="370" y="339" class="font-ui" fill="#6c63ff" font-size="12" text-anchor="middle">Claude AI</text>
+
+  <!-- Category label -->
+  <text x="80" y="170" class="font-ui" fill="#6c63ff" font-size="14" font-weight="600" letter-spacing="2">WORKS</text>
+
+  <!-- Bottom border -->
+  <rect x="0" y="624" width="1200" height="6" fill="url(#accent-grad)" opacity="0.6"/>
+</svg>

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Citrus Editor - AI搭載テキストエディタの開発 | 開発実績</title>
+  <meta name="description" content="社内業務改善ツールとして開発したAI搭載テキストエディタ「Citrus Editor」の機能紹介。音声入力、AIアシスタント、マルチファイル編集など。">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --text: #1a1a2e;
+      --text-secondary: #555;
+      --text-muted: #888;
+      --bg: #ffffff;
+      --bg-alt: #f8f9fc;
+      --accent: #6c63ff;
+      --accent-light: #eeecff;
+      --border: #e8e8ee;
+      --max-width: 840px;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.85;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header / Hero ── */
+    .hero {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16162a 100%);
+      padding: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero img,
+    .hero object {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* ── Article ── */
+    .article {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    .meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 12px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .meta-tag {
+      background: var(--accent-light);
+      color: var(--accent);
+      padding: 2px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1.4;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      font-size: 18px;
+      color: var(--text-secondary);
+      margin-bottom: 40px;
+      line-height: 1.7;
+    }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-top: 56px;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--accent);
+      display: inline-block;
+    }
+
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-top: 32px;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+
+    p {
+      margin-bottom: 20px;
+      color: var(--text-secondary);
+    }
+
+    /* ── Screenshot ── */
+    .screenshot {
+      margin: 32px 0;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+      border: 1px solid var(--border);
+    }
+
+    .screenshot img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .screenshot-caption {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 12px;
+      margin-bottom: 8px;
+    }
+
+    /* ── Feature grid ── */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+      margin: 32px 0;
+    }
+
+    .feature-card {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      transition: box-shadow 0.2s;
+    }
+
+    .feature-card:hover {
+      box-shadow: 0 2px 12px rgba(108, 99, 255, 0.08);
+    }
+
+    .feature-icon {
+      font-size: 28px;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .feature-card h4 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      margin-bottom: 0;
+      line-height: 1.7;
+    }
+
+    /* ── Tech stack ── */
+    .tech-stack {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 20px 0 32px;
+    }
+
+    .tech-pill {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    /* ── Info box ── */
+    .info-box {
+      background: var(--accent-light);
+      border-left: 4px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 20px 24px;
+      margin: 32px 0;
+    }
+
+    .info-box p {
+      color: var(--text);
+      margin-bottom: 0;
+      font-size: 14px;
+    }
+
+    /* ── Table ── */
+    .spec-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0 32px;
+      font-size: 14px;
+    }
+
+    .spec-table th,
+    .spec-table td {
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .spec-table th {
+      background: var(--bg-alt);
+      font-weight: 600;
+      color: var(--text);
+      width: 180px;
+    }
+
+    .spec-table td {
+      color: var(--text-secondary);
+    }
+
+    /* ── Footer ── */
+    .article-footer {
+      margin-top: 64px;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      h1 { font-size: 24px; }
+      .subtitle { font-size: 16px; }
+      .article { padding: 32px 16px 60px; }
+      .features { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Hero / Thumbnail -->
+<div class="hero">
+  <img src="images/thumbnail.svg" alt="Citrus Editor - AI搭載テキストエディタ">
+</div>
+
+<article class="article">
+  <!-- Meta -->
+  <div class="meta">
+    <span class="meta-tag">社内ツール</span>
+    <time datetime="2026-03">2026年3月</time>
+    <span>開発期間：約2ヶ月</span>
+  </div>
+
+  <h1>Citrus Editor：AI搭載テキストエディタの開発</h1>
+  <p class="subtitle">
+    議事録作成やコード編集など、日々の業務で使うテキスト作業を効率化するために開発した社内向けWebエディタです。音声入力・AIアシスタント・クラウド保存を軸に、「キーボードから手を離しても仕事が進む」体験を目指しました。
+  </p>
+
+  <!-- ============================================ -->
+  <h2>プロジェクト概要</h2>
+  <p>
+    社内では議事録やメモ、ちょっとしたコードの確認作業にさまざまなツールを使い分けており、情報が散逸しがちでした。「ひとつの場所でテキスト作業を完結させたい」というニーズに応えるため、ブラウザだけで使えるテキストエディタを自社開発しました。
+  </p>
+
+  <div class="info-box">
+    <p><strong>ポイント：</strong>エディタとしての基本機能を丁寧に作り込みつつ、AI・音声入力といった先進的な機能を統合。ブラウザだけで動作し、インストール不要で社内展開できる設計です。</p>
+  </div>
+
+  <!-- ============================================ -->
+  <h2>主要機能</h2>
+
+  <div class="features">
+    <div class="feature-card">
+      <span class="feature-icon">📝</span>
+      <h4>マルチファイル編集</h4>
+      <p>タブ切り替えによる複数ファイルの同時編集。サイドバーのファイルツリーで一覧管理が可能です。</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🤖</span>
+      <h4>AIアシスタント</h4>
+      <p>Claude APIを統合。開いているドキュメントの内容を踏まえた質問・相談ができます。コード提案もコピー一発。</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🎤</span>
+      <h4>音声入力</h4>
+      <p>ブラウザの音声認識を活用し、カーソル位置への直接入力と、音声だけで新規ドキュメントを作成する2つのモードを搭載。</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">☁️</span>
+      <h4>クラウド自動保存</h4>
+      <p>Supabase連携により、編集内容を自動でクラウドに保存。端末を変えても続きから作業できます。</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">⌨️</span>
+      <h4>ショートカット &amp; コマンドパレット</h4>
+      <p>主要操作はキーボードショートカットに対応。コマンドパレットからすべての機能にアクセスできます。</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🌐</span>
+      <h4>多言語ファイル対応</h4>
+      <p>HTML, CSS, JavaScript, TypeScript, JSON, Markdownなど主要な形式に対応。拡張子による自動判定でアイコンも変化します。</p>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <h2>画面紹介</h2>
+
+  <h3>エディタ全体画面</h3>
+  <p>
+    左側のサイドバーにファイル一覧、中央がエディタ領域、下部にステータスバーというレイアウトです。Atom風のダークテーマで、長時間の作業でも目が疲れにくい配色を採用しています。
+  </p>
+  <div class="screenshot">
+    <img src="images/screenshot-main.svg" alt="Citrus Editor メイン画面">
+  </div>
+  <p class="screenshot-caption">メインエディタ画面 - サイドバー・タブ・行番号・ステータスバーを備えたフルエディタ</p>
+
+  <h3>AIアシスタント</h3>
+  <p>
+    <code>⌘ /</code> でAIパネルを開くと、画面右側にチャットUIが表示されます。現在開いているドキュメントの内容をコンテキストとしてAIに渡すため、「このコードにエラーハンドリングを追加して」といった文脈依存の質問にも対応します。AIの回答にコードブロックが含まれる場合は、シンタックスハイライト付きで表示され、ワンクリックでコピーできます。
+  </p>
+  <div class="screenshot">
+    <img src="images/screenshot-ai.svg" alt="AIアシスタント画面">
+  </div>
+  <p class="screenshot-caption">AIアシスタントパネル - コード提案をコピーボタンで即座にエディタに反映</p>
+
+  <h3>音声入力</h3>
+  <p>
+    マイクボタンを押すと音声入力モードに入ります。認識中のテキスト（interim transcript）はリアルタイムでエディタ上にプレビュー表示され、確定するとカーソル位置に挿入されます。議事録のリアルタイム作成に特に威力を発揮します。
+  </p>
+  <div class="screenshot">
+    <img src="images/screenshot-voice.svg" alt="音声入力画面">
+  </div>
+  <p class="screenshot-caption">音声入力中の画面 - リアルタイムで認識結果がプレビュー表示される</p>
+
+  <h3>コマンドパレット</h3>
+  <p>
+    <code>⌘ Shift K</code> でコマンドパレットを呼び出し、ファイル作成・AI起動・音声入力など全機能にキーボードだけでアクセスできます。ショートカットキーも一覧表示されるため、操作を覚える助けにもなります。
+  </p>
+  <div class="screenshot">
+    <img src="images/screenshot-command.svg" alt="コマンドパレット">
+  </div>
+  <p class="screenshot-caption">コマンドパレット - すべての機能にキーボードだけで到達可能</p>
+
+  <!-- ============================================ -->
+  <h2>技術構成</h2>
+
+  <div class="tech-stack">
+    <span class="tech-pill">Next.js</span>
+    <span class="tech-pill">React</span>
+    <span class="tech-pill">TypeScript</span>
+    <span class="tech-pill">Supabase</span>
+    <span class="tech-pill">Claude API (Anthropic)</span>
+    <span class="tech-pill">Web Speech API</span>
+  </div>
+
+  <table class="spec-table">
+    <tr>
+      <th>フロントエンド</th>
+      <td>Next.js + React（TypeScript）。SSRを使わず、クライアントサイドでの操作性を最優先にした構成。</td>
+    </tr>
+    <tr>
+      <th>バックエンド / DB</th>
+      <td>Supabase（PostgreSQL）。ドキュメントの永続化と自動保存（1秒デバウンス）を担当。</td>
+    </tr>
+    <tr>
+      <th>AI連携</th>
+      <td>Anthropic Claude API。Next.js APIルートからストリーミング応答を返し、リアルタイムに表示。</td>
+    </tr>
+    <tr>
+      <th>音声認識</th>
+      <td>Web Speech API（ブラウザネイティブ）。日本語（ja-JP）に最適化。カスタムフックで抽象化。</td>
+    </tr>
+    <tr>
+      <th>状態管理</th>
+      <td>React Hooks（useDocuments, useSpeechRecognition）による軽量な状態管理。外部ライブラリ不使用。</td>
+    </tr>
+    <tr>
+      <th>スタイリング</th>
+      <td>CSS変数を活用したカスタムテーマ。UIフレームワーク非依存で、軽量かつ細かい制御が可能。</td>
+    </tr>
+  </table>
+
+  <!-- ============================================ -->
+  <h2>こだわりポイント</h2>
+
+  <h3>エディタとしての地道な作り込み</h3>
+  <p>
+    括弧の自動補完、Tabキーによるスペース挿入、選択テキストの括弧囲み、日付ヘッダーのワンタッチ挿入（<code>⌘ Shift L</code>）など、日常的に繰り返す操作を丁寧にサポートしています。日本語IMEとの組み合わせ（compositionイベントの適切な処理）にも対応し、日本語環境でストレスなく使えます。
+  </p>
+
+  <h3>音声からのドキュメント直接作成</h3>
+  <p>
+    「音声で新規ドキュメント」モードでは、話すだけで新しいファイルが作成されます。急なメモや、PCの前に座れない状況での記録に便利です。AIパネル内でも音声入力が使えるため、タイピングせずにAIへ質問を投げることも可能です。
+  </p>
+
+  <h3>AIがドキュメント全体を理解</h3>
+  <p>
+    AIに質問を送ると、現在開いている全ドキュメントの内容がコンテキストとして渡されます。ファイルを横断した質問や、プロジェクト全体を踏まえた提案が可能です。応答はストリーミングで逐次表示されるため、待ち時間のストレスもありません。
+  </p>
+
+  <h3>モバイル対応</h3>
+  <p>
+    レスポンシブデザインにより、スマートフォンやタブレットからもアクセス可能です。小画面ではサイドバーが自動的に折りたたまれ、モバイル向けのツールバーが表示されます。外出先からの簡単な編集にも対応しています。
+  </p>
+
+  <!-- ============================================ -->
+  <h2>成果と今後</h2>
+  <p>
+    社内で実際に日常利用されており、特に議事録の音声入力とAIによる要約・整理のワークフローが好評です。「議事録を取りながらAIに要点をまとめてもらう」という使い方が定着しつつあります。
+  </p>
+  <p>
+    今後はリアルタイム共同編集、バージョン履歴、プラグイン機構など、チームでの利用をさらに促進する機能の追加を検討しています。
+  </p>
+
+  <!-- ── Footer ── -->
+  <div class="article-footer">
+    <p>制作：自社開発（社内業務改善ツール）</p>
+  </div>
+</article>
+
+</body>
+</html>

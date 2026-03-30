@@ -199,14 +199,7 @@ export default function Editor() {
             />
           ) : (
             <div className="welcome-screen">
-              <svg className="logo-svg" width="64" height="64" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18 32 Q2 28, 2 12 A16 16 0 0 1 34 12 Q34 28, 18 32Z" fill="#3a9b4a"/>
-                <path d="M18 32 Q10 24, 5 14" stroke="#252540" strokeWidth="1.8" fill="none"/>
-                <path d="M18 32 Q14 22, 11 10" stroke="#252540" strokeWidth="1.8" fill="none"/>
-                <path d="M18 32 L18 8" stroke="#252540" strokeWidth="1.8" fill="none"/>
-                <path d="M18 32 Q22 22, 25 10" stroke="#252540" strokeWidth="1.8" fill="none"/>
-                <path d="M18 32 Q26 24, 31 14" stroke="#252540" strokeWidth="1.8" fill="none"/>
-              </svg>
+              <img className="logo-img" src="/citrusapp.png" alt="CitrusApp" height="80" />
               <h2 style={{ color: '#3a9b4a' }}>CitrusApp</h2>
               <div className="shortcuts">
                 <div className="shortcut-row">

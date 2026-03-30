@@ -199,8 +199,19 @@ export default function Editor() {
             />
           ) : (
             <div className="welcome-screen">
-              <div className="logo">🍋</div>
-              <h2>Citrus Editor</h2>
+              <svg className="logo-svg" width="64" height="64" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 22 C20 22, 10 18, 6 6" stroke="#3a9b4a" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
+                <path d="M20 22 C20 22, 14 12, 14 2" stroke="#3a9b4a" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
+                <path d="M20 22 C20 22, 20 10, 20 0" stroke="#3a9b4a" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
+                <path d="M20 22 C20 22, 26 12, 26 2" stroke="#3a9b4a" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
+                <path d="M20 22 C20 22, 30 18, 34 6" stroke="#3a9b4a" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
+                <ellipse cx="6" cy="4" rx="3.5" ry="5.5" fill="#3a9b4a" transform="rotate(-20, 6, 4)"/>
+                <ellipse cx="14" cy="1" rx="3.5" ry="5.5" fill="#3a9b4a" transform="rotate(-8, 14, 1)"/>
+                <ellipse cx="20" cy="0" rx="3.5" ry="5.5" fill="#3a9b4a"/>
+                <ellipse cx="26" cy="1" rx="3.5" ry="5.5" fill="#3a9b4a" transform="rotate(8, 26, 1)"/>
+                <ellipse cx="34" cy="4" rx="3.5" ry="5.5" fill="#3a9b4a" transform="rotate(20, 34, 4)"/>
+              </svg>
+              <h2 style={{ color: '#3a9b4a' }}>CitrusApp</h2>
               <div className="shortcuts">
                 <div className="shortcut-row">
                   <kbd>⌘ ⇧ K</kbd>

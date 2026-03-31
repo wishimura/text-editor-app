@@ -8,6 +8,8 @@ interface TitleBarProps {
 }
 
 const SHORTCUTS = [
+  { key: '⌘ ⇧ E', desc: '新規ファイル' },
+  { key: '⌘ O', desc: 'ファイルを開く' },
   { key: '⌘ ⇧ K', desc: 'コマンドパレット' },
   { key: '⌘ \\', desc: 'サイドバー開閉' },
   { key: '⌘ S', desc: '保存' },

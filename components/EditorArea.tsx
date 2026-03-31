@@ -21,6 +21,7 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const [cursorLine, setCursorLine] = useState(1);
   const cursorPosRef = useRef(0);
+  const initialScrollDone = useRef(false);
 
   const {
     isSupported,
@@ -135,6 +136,24 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
 
   useEffect(() => {
     updateCursor();
+  }, [content, updateCursor]);
+
+  // Scroll to bottom on initial mount
+  useEffect(() => {
+    if (!initialScrollDone.current && textareaRef.current && content) {
+      initialScrollDone.current = true;
+      const ta = textareaRef.current;
+      requestAnimationFrame(() => {
+        ta.scrollTop = ta.scrollHeight;
+        if (lineNumbersRef.current) {
+          lineNumbersRef.current.scrollTop = ta.scrollTop;
+        }
+        // Place cursor at end
+        ta.selectionStart = ta.selectionEnd = ta.value.length;
+        cursorPosRef.current = ta.value.length;
+        updateCursor();
+      });
+    }
   }, [content, updateCursor]);
 
   // Handle cursor positioning from parent (e.g., header insert)

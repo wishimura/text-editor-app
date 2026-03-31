@@ -14,6 +14,7 @@ export function useDocuments() {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const localContentRef = useRef<Map<string, string>>(new Map());
+  const restoredRef = useRef(false);
 
   const fetchDocuments = useCallback(async () => {
     setIsLoading(true);
@@ -25,6 +26,16 @@ export function useDocuments() {
     if (!error && data) {
       setDocuments(data);
       data.forEach(doc => localContentRef.current.set(doc.id, doc.content));
+
+      // Restore last opened document on first load
+      if (!restoredRef.current) {
+        restoredRef.current = true;
+        const lastDocId = localStorage.getItem('citrus_lastDocId');
+        if (lastDocId && data.some(d => d.id === lastDocId)) {
+          setOpenTabs([lastDocId]);
+          setActiveDocId(lastDocId);
+        }
+      }
     }
     setIsLoading(false);
   }, []);
@@ -32,6 +43,13 @@ export function useDocuments() {
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
+
+  // Persist active doc id to localStorage
+  useEffect(() => {
+    if (activeDocId) {
+      localStorage.setItem('citrus_lastDocId', activeDocId);
+    }
+  }, [activeDocId]);
 
   const activeDoc = documents.find(d => d.id === activeDocId) || null;
 

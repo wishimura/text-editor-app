@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useDocuments } from '@/lib/useDocuments';
 import TitleBar from './TitleBar';
 import Sidebar from './Sidebar';
@@ -46,6 +46,24 @@ export default function Editor() {
     const name = prompt('File name:');
     if (name) createDocument(name);
   }, [createDocument]);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleOpenFile = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    const doc = await createDocument(file.name);
+    if (doc) {
+      updateContent(doc.id, text);
+    }
+    // Reset so same file can be opened again
+    e.target.value = '';
+  }, [createDocument, updateContent]);
 
   const handleDeleteDocument = useCallback((id: string) => {
     if (confirm('Delete this file?')) {
@@ -113,6 +131,16 @@ export default function Editor() {
         e.preventDefault();
         setAiPanelOpen(prev => !prev);
       }
+      // New file: Cmd+Shift+E (avoids Chrome's Cmd+N and Cmd+Shift+N)
+      if (mod && e.shiftKey && (e.key === 'e' || e.key === 'E')) {
+        e.preventDefault();
+        handleCreateDocument();
+      }
+      // Open file: Cmd+O
+      if (mod && e.key === 'o') {
+        e.preventDefault();
+        fileInputRef.current?.click();
+      }
       if (e.key === 'Escape') {
         setCommandPaletteOpen(false);
         setAiPanelOpen(false);
@@ -128,7 +156,8 @@ export default function Editor() {
   }, [activeDocId, closeTab]);
 
   const commands = [
-    { name: 'New File', shortcut: '', action: handleCreateDocument },
+    { name: 'New File', shortcut: '⌘ ⇧ E', action: handleCreateDocument },
+    { name: 'Open File', shortcut: '⌘ O', action: handleOpenFile },
     { name: 'Close Tab', shortcut: '', action: handleCloseActiveTab },
     { name: 'Toggle Sidebar', shortcut: '⌘ \\', action: toggleSidebar },
     { name: 'Insert Date Header', shortcut: '⌘ ⇧ L', action: handleInsertHeader },
@@ -241,6 +270,15 @@ export default function Editor() {
         visible={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
         commands={commands}
+      />
+
+      {/* Hidden file input for Open File */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        style={{ display: 'none' }}
+        accept=".txt,.md,.html,.css,.js,.jsx,.ts,.tsx,.json,.xml,.yaml,.yml,.csv,.log"
+        onChange={handleFileSelected}
       />
 
       <VoiceNewDoc

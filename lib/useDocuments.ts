@@ -149,5 +149,6 @@ export function useDocuments() {
     deleteDocument,
     updateContent,
     flushSave,
+    refetch: fetchDocuments,
   };
 }

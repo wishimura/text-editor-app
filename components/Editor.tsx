@@ -26,6 +26,7 @@ export default function Editor() {
     deleteDocument,
     updateContent,
     flushSave,
+    refetch,
   } = useDocuments();
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -164,6 +165,7 @@ export default function Editor() {
     { name: 'Save', shortcut: '⌘ S', action: flushSave },
     { name: 'Voice → New Document', shortcut: '', action: handleVoiceNewDoc },
     { name: 'AI Assistant', shortcut: '⌘ /', action: () => setAiPanelOpen(prev => !prev) },
+    { name: 'Reload Documents', shortcut: '', action: refetch },
   ];
 
   if (isLoading) {
@@ -181,7 +183,7 @@ export default function Editor() {
 
   return (
     <div className="app">
-      <TitleBar fileName={titleFileName} onToggleSidebar={toggleSidebar} />
+      <TitleBar fileName={titleFileName} onToggleSidebar={toggleSidebar} onReload={refetch} />
 
       {/* Mobile toolbar */}
       <div className="mobile-toolbar">

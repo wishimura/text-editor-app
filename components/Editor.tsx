@@ -336,6 +336,21 @@ export default function Editor() {
 
           {activeDoc ? (
             <>
+              {/* Editor Toolbar */}
+              <div className="editor-toolbar">
+                <button className="toolbar-btn" onClick={() => setSearchOpen(prev => !prev)} title="検索・置換 (⌘F)">🔍</button>
+                <button className="toolbar-btn" onClick={handleDownload} title="ダウンロード (⌘⇧S)">💾</button>
+                <button className="toolbar-btn" onClick={() => setMdPreviewOpen(prev => !prev)} title="MDプレビュー (⌘⇧M)" disabled={activeDoc.language !== 'md'}>📖</button>
+                <button className="toolbar-btn" onClick={handleToggleBookmark} title="ブックマーク (⌘⇧B)">🔖</button>
+                <button className="toolbar-btn" onClick={handleNextBookmark} title="次のブックマーク" disabled={bookmarks.size === 0}>⏭</button>
+                <button className="toolbar-btn" onClick={handleInsertHeader} title="日付ヘッダー (⌘⇧L)">📅</button>
+                <div className="toolbar-separator" />
+                <button className="toolbar-btn" onClick={() => changeFontSize(-1)} title="フォント縮小 (⌘-)">A-</button>
+                <button className="toolbar-btn" onClick={() => changeFontSize(1)} title="フォント拡大 (⌘+)">A+</button>
+                <div className="toolbar-separator" />
+                <button className="toolbar-btn" onClick={() => setAiPanelOpen(prev => !prev)} title="AI Assistant (⌘/)">🤖</button>
+              </div>
+
               <SearchBar
                 visible={searchOpen}
                 onClose={() => setSearchOpen(false)}

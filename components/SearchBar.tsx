@@ -49,10 +49,10 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
     if (found.length > 0) highlightMatch(found[0]);
   }, [query, content]);
 
-  const highlightMatch = useCallback((pos: number) => {
+  const highlightMatch = useCallback((pos: number, focusTextarea = false) => {
     const ta = textareaRef.current;
     if (!ta || pos < 0) return;
-    ta.focus();
+    if (focusTextarea) ta.focus();
     ta.selectionStart = pos;
     ta.selectionEnd = pos + query.length;
     // Scroll to selection
@@ -65,14 +65,14 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
     if (matches.length === 0) return;
     const next = (matchIndex + 1) % matches.length;
     setMatchIndex(next);
-    highlightMatch(matches[next]);
+    highlightMatch(matches[next], true);
   }, [matches, matchIndex, highlightMatch]);
 
   const goPrev = useCallback(() => {
     if (matches.length === 0) return;
     const prev = (matchIndex - 1 + matches.length) % matches.length;
     setMatchIndex(prev);
-    highlightMatch(matches[prev]);
+    highlightMatch(matches[prev], true);
   }, [matches, matchIndex, highlightMatch]);
 
   const handleReplace = useCallback(() => {

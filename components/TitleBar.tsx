@@ -11,14 +11,17 @@ interface TitleBarProps {
 const SHORTCUTS = [
   { key: '⌘ ⇧ E', desc: '新規ファイル' },
   { key: '⌘ O', desc: 'ファイルを開く' },
+  { key: '⌘ ⇧ S', desc: 'ダウンロード' },
+  { key: '⌘ F', desc: '検索・置換' },
+  { key: '⌘ ⇧ M', desc: 'MDプレビュー' },
+  { key: '⌘ ⇧ B', desc: 'ブックマーク' },
+  { key: '⌘ +/-', desc: 'フォントサイズ' },
   { key: '⌘ ⇧ K', desc: 'コマンドパレット' },
   { key: '⌘ \\', desc: 'サイドバー開閉' },
   { key: '⌘ S', desc: '保存' },
   { key: '⌘ ⇧ L', desc: '日付ヘッダー挿入' },
   { key: '⌘ /', desc: 'AIアシスタント開閉' },
   { key: 'Escape', desc: 'パネルを閉じる' },
-  { key: 'Enter', desc: 'AI: メッセージ送信' },
-  { key: '⇧ Enter', desc: 'AI: 改行' },
 ];
 
 export default function TitleBar({ fileName, onToggleSidebar, onReload }: TitleBarProps) {

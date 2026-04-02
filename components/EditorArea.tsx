@@ -10,14 +10,18 @@ interface EditorAreaProps {
   onListeningChange?: (listening: boolean) => void;
   cursorInsertPos?: number | null;
   onCursorInsertDone?: () => void;
+  fontSize?: number;
+  textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
+  bookmarks?: Set<number>;
 }
 
 const bracketPairs: Record<string, string> = {
   '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`',
 };
 
-export default function EditorArea({ content, onChange, onCursorChange, onListeningChange, cursorInsertPos, onCursorInsertDone }: EditorAreaProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+export default function EditorArea({ content, onChange, onCursorChange, onListeningChange, cursorInsertPos, onCursorInsertDone, fontSize = 14, textareaRef: externalRef, bookmarks }: EditorAreaProps) {
+  const internalRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = externalRef || internalRef;
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const [cursorLine, setCursorLine] = useState(1);
   const cursorPosRef = useRef(0);
@@ -49,7 +53,6 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
       const after = content.substring(pos);
       const newContent = before + transcript + after;
       onChange(newContent);
-      // Move cursor after inserted text
       requestAnimationFrame(() => {
         if (ta) {
           ta.selectionStart = ta.selectionEnd = pos + transcript.length;
@@ -59,13 +62,11 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
     }
   }, [transcript, content, onChange]);
 
-  // Reset prev transcript when starting new session
   const handleMicClick = useCallback(() => {
     if (isListening) {
       stopListening();
     } else {
       prevTranscriptRef.current = '';
-      // Remember cursor position before starting
       if (textareaRef.current) {
         cursorPosRef.current = textareaRef.current.selectionStart;
       }
@@ -74,6 +75,7 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
   }, [isListening, startListening, stopListening]);
 
   const lineCount = useMemo(() => content.split('\n').length, [content]);
+  const lineHeight = fontSize * 1.6;
 
   const updateCursor = useCallback(() => {
     const ta = textareaRef.current;
@@ -148,7 +150,6 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
         if (lineNumbersRef.current) {
           lineNumbersRef.current.scrollTop = ta.scrollTop;
         }
-        // Place cursor at end
         ta.selectionStart = ta.selectionEnd = ta.value.length;
         cursorPosRef.current = ta.value.length;
         updateCursor();
@@ -156,16 +157,14 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
     }
   }, [content, updateCursor]);
 
-  // Handle cursor positioning from parent (e.g., header insert)
+  // Handle cursor positioning from parent
   useEffect(() => {
     if (cursorInsertPos != null && textareaRef.current) {
       const ta = textareaRef.current;
       ta.focus();
-      // Place cursor at the date line, right after the date string (before the newline)
       const pos = cursorInsertPos;
       ta.selectionStart = ta.selectionEnd = pos;
       cursorPosRef.current = pos;
-      // Scroll to cursor
       ta.blur();
       ta.focus();
       updateCursor();
@@ -176,18 +175,23 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
   const lineNumbers = useMemo(() => {
     const nums = [];
     for (let i = 1; i <= Math.max(lineCount, 1); i++) {
+      const hasBookmark = bookmarks?.has(i);
       nums.push(
-        <span key={i} className={`line-num${i === cursorLine ? ' active' : ''}`}>
-          {i}
+        <span
+          key={i}
+          className={`line-num${i === cursorLine ? ' active' : ''}${hasBookmark ? ' bookmarked' : ''}`}
+          style={{ height: lineHeight }}
+        >
+          {hasBookmark ? '●' : i}
         </span>
       );
     }
     return nums;
-  }, [lineCount, cursorLine]);
+  }, [lineCount, cursorLine, bookmarks, lineHeight]);
 
   return (
     <div className="editor-wrapper">
-      <div className="line-numbers" ref={lineNumbersRef}>
+      <div className="line-numbers" ref={lineNumbersRef} style={{ fontSize, lineHeight: 1.6 }}>
         {lineNumbers}
       </div>
       <textarea
@@ -205,14 +209,13 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
         autoCapitalize="off"
         wrap="off"
         placeholder="Start typing..."
+        style={{ fontSize, lineHeight: 1.6 }}
       />
 
-      {/* Interim transcript preview */}
       {isListening && interimTranscript && (
         <div className="voice-preview">{interimTranscript}</div>
       )}
 
-      {/* Mic button */}
       {isSupported && (
         <button
           className={`mic-btn${isListening ? ' listening' : ''}`}

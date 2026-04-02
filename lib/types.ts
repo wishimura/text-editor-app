@@ -3,6 +3,7 @@ export interface Document {
   title: string;
   content: string;
   language: string;
+  folder?: string;
   created_at: string;
   updated_at: string;
 }

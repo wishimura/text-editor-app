@@ -135,6 +135,31 @@ export function useDocuments() {
     }
   }, [activeDocId]);
 
+  const renameDocument = useCallback(async (id: string, newTitle: string) => {
+    const language = getLangFromTitle(newTitle);
+    const { error } = await getSupabase()
+      .from('documents')
+      .update({ title: newTitle, language, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (!error) {
+      setDocuments(prev =>
+        prev.map(d => d.id === id ? { ...d, title: newTitle, language } : d)
+      );
+    }
+  }, []);
+
+  const updateFolder = useCallback(async (id: string, folder: string) => {
+    const { error } = await getSupabase()
+      .from('documents')
+      .update({ folder, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (!error) {
+      setDocuments(prev =>
+        prev.map(d => d.id === id ? { ...d, folder } : d)
+      );
+    }
+  }, []);
+
   return {
     documents,
     openTabs,
@@ -150,5 +175,7 @@ export function useDocuments() {
     updateContent,
     flushSave,
     refetch: fetchDocuments,
+    renameDocument,
+    updateFolder,
   };
 }

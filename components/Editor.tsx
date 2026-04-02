@@ -10,6 +10,8 @@ import StatusBar from './StatusBar';
 import CommandPalette from './CommandPalette';
 import VoiceNewDoc from './VoiceNewDoc';
 import AiPanel from './AiPanel';
+import SearchBar from './SearchBar';
+import MarkdownPreview from './MarkdownPreview';
 
 export default function Editor() {
   const {
@@ -27,6 +29,8 @@ export default function Editor() {
     updateContent,
     flushSave,
     refetch,
+    renameDocument,
+    updateFolder,
   } = useDocuments();
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -38,6 +42,45 @@ export default function Editor() {
   const [isListening, setIsListening] = useState(false);
   const [voiceNewDocMode, setVoiceNewDocMode] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [mdPreviewOpen, setMdPreviewOpen] = useState(false);
+  const [cursorInsertPos, setCursorInsertPos] = useState<number | null>(null);
+  const [bookmarks, setBookmarks] = useState<Set<number>>(new Set());
+
+  // Theme
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('citrus_theme') || 'dark';
+    return 'dark';
+  });
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('citrus_theme', next);
+      return next;
+    });
+  }, []);
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  // Font size
+  const [fontSize, setFontSize] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('citrus_fontSize');
+      return saved ? parseInt(saved, 10) : 14;
+    }
+    return 14;
+  });
+  const changeFontSize = useCallback((delta: number) => {
+    setFontSize(prev => {
+      const next = Math.max(10, Math.min(28, prev + delta));
+      localStorage.setItem('citrus_fontSize', String(next));
+      return next;
+    });
+  }, []);
+
+  // Textarea ref (passed to SearchBar)
+  const editorTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed(prev => !prev);
@@ -62,7 +105,6 @@ export default function Editor() {
     if (doc) {
       updateContent(doc.id, text);
     }
-    // Reset so same file can be opened again
     e.target.value = '';
   }, [createDocument, updateContent]);
 
@@ -95,23 +137,56 @@ export default function Editor() {
     const today = new Date();
     const dateStr = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
     const separator = '----------------------------------------';
-    // Build header: separator, date + space (cursor goes here), separator
     const beforeCursor = `\n\n${separator}\n${dateStr} `;
     const afterCursor = `\n${separator}\n`;
     const newContent = activeDoc.content + beforeCursor + afterCursor;
     updateContent(activeDocId, newContent);
-    // Cursor right after "YYYY/MM/DD " (title input position)
     setCursorInsertPos(activeDoc.content.length + beforeCursor.length);
   }, [activeDocId, activeDoc, updateContent]);
 
-  const [cursorInsertPos, setCursorInsertPos] = useState<number | null>(null);
+  // Download current file
+  const handleDownload = useCallback(() => {
+    if (!activeDoc) return;
+    const blob = new Blob([activeDoc.content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = activeDoc.title;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [activeDoc]);
+
+  // Toggle bookmark on current line
+  const handleToggleBookmark = useCallback(() => {
+    setBookmarks(prev => {
+      const next = new Set(prev);
+      if (next.has(cursorPos.line)) next.delete(cursorPos.line);
+      else next.add(cursorPos.line);
+      return next;
+    });
+  }, [cursorPos.line]);
+
+  // Go to next bookmark
+  const handleNextBookmark = useCallback(() => {
+    if (bookmarks.size === 0) return;
+    const sorted = Array.from(bookmarks).sort((a, b) => a - b);
+    const next = sorted.find(b => b > cursorPos.line) || sorted[0];
+    // Jump to that line
+    if (activeDoc && editorTextareaRef.current) {
+      const lines = activeDoc.content.split('\n');
+      let pos = 0;
+      for (let i = 0; i < Math.min(next - 1, lines.length); i++) {
+        pos += lines[i].length + 1;
+      }
+      setCursorInsertPos(pos);
+    }
+  }, [bookmarks, cursorPos.line, activeDoc]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
 
-      // All shortcuts chosen to avoid Chrome conflicts
       if (mod && e.shiftKey && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
         setCommandPaletteOpen(true);
@@ -124,7 +199,8 @@ export default function Editor() {
         e.preventDefault();
         flushSave();
       }
-      if (mod && e.shiftKey && (e.key === 'l' || e.key === 'L')) {
+      // Fix: ⌘⇧L - check both key values and code for cross-env compatibility
+      if (mod && e.shiftKey && (e.key === 'l' || e.key === 'L' || e.code === 'KeyL')) {
         e.preventDefault();
         handleInsertHeader();
       }
@@ -132,25 +208,54 @@ export default function Editor() {
         e.preventDefault();
         setAiPanelOpen(prev => !prev);
       }
-      // New file: Cmd+Shift+E (avoids Chrome's Cmd+N and Cmd+Shift+N)
       if (mod && e.shiftKey && (e.key === 'e' || e.key === 'E')) {
         e.preventDefault();
         handleCreateDocument();
       }
-      // Open file: Cmd+O
       if (mod && e.key === 'o') {
         e.preventDefault();
         fileInputRef.current?.click();
       }
+      // Search: Cmd+F
+      if (mod && e.key === 'f') {
+        e.preventDefault();
+        setSearchOpen(prev => !prev);
+      }
+      // Font size: Cmd+= / Cmd+-
+      if (mod && (e.key === '=' || e.key === '+')) {
+        e.preventDefault();
+        changeFontSize(1);
+      }
+      if (mod && e.key === '-') {
+        e.preventDefault();
+        changeFontSize(-1);
+      }
+      // Markdown preview: Cmd+Shift+M
+      if (mod && e.shiftKey && (e.key === 'm' || e.key === 'M')) {
+        e.preventDefault();
+        setMdPreviewOpen(prev => !prev);
+      }
+      // Toggle bookmark: Cmd+Shift+B
+      if (mod && e.shiftKey && (e.key === 'b' || e.key === 'B')) {
+        e.preventDefault();
+        handleToggleBookmark();
+      }
+      // Download: Cmd+Shift+S
+      if (mod && e.shiftKey && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        handleDownload();
+      }
       if (e.key === 'Escape') {
         setCommandPaletteOpen(false);
         setAiPanelOpen(false);
+        setSearchOpen(false);
+        setMdPreviewOpen(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeDocId, closeTab, flushSave, handleCreateDocument, handleInsertHeader]);
+  }, [activeDocId, closeTab, flushSave, handleCreateDocument, handleInsertHeader, changeFontSize, handleToggleBookmark, handleDownload]);
 
   const handleCloseActiveTab = useCallback(() => {
     if (activeDocId) closeTab(activeDocId);
@@ -159,9 +264,17 @@ export default function Editor() {
   const commands = [
     { name: 'New File', shortcut: '⌘ ⇧ E', action: handleCreateDocument },
     { name: 'Open File', shortcut: '⌘ O', action: handleOpenFile },
+    { name: 'Download File', shortcut: '⌘ ⇧ S', action: handleDownload },
     { name: 'Close Tab', shortcut: '', action: handleCloseActiveTab },
     { name: 'Toggle Sidebar', shortcut: '⌘ \\', action: toggleSidebar },
+    { name: 'Find & Replace', shortcut: '⌘ F', action: () => setSearchOpen(prev => !prev) },
+    { name: 'Markdown Preview', shortcut: '⌘ ⇧ M', action: () => setMdPreviewOpen(prev => !prev) },
     { name: 'Insert Date Header', shortcut: '⌘ ⇧ L', action: handleInsertHeader },
+    { name: 'Toggle Bookmark', shortcut: '⌘ ⇧ B', action: handleToggleBookmark },
+    { name: 'Next Bookmark', shortcut: '', action: handleNextBookmark },
+    { name: 'Font Size +', shortcut: '⌘ +', action: () => changeFontSize(1) },
+    { name: 'Font Size -', shortcut: '⌘ -', action: () => changeFontSize(-1) },
+    { name: 'Toggle Theme', shortcut: '', action: toggleTheme },
     { name: 'Save', shortcut: '⌘ S', action: flushSave },
     { name: 'Voice → New Document', shortcut: '', action: handleVoiceNewDoc },
     { name: 'AI Assistant', shortcut: '⌘ /', action: () => setAiPanelOpen(prev => !prev) },
@@ -208,6 +321,8 @@ export default function Editor() {
           onOpenDocument={openDocument}
           onCreateDocument={handleCreateDocument}
           onDeleteDocument={handleDeleteDocument}
+          onRenameDocument={renameDocument}
+          onMoveToFolder={updateFolder}
         />
 
         <div className="editor-area">
@@ -220,14 +335,33 @@ export default function Editor() {
           />
 
           {activeDoc ? (
-            <EditorArea
-              content={activeDoc.content}
-              onChange={handleContentChange}
-              onCursorChange={handleCursorChange}
-              onListeningChange={handleListeningChange}
-              cursorInsertPos={cursorInsertPos}
-              onCursorInsertDone={() => setCursorInsertPos(null)}
-            />
+            <>
+              <SearchBar
+                visible={searchOpen}
+                onClose={() => setSearchOpen(false)}
+                content={activeDoc.content}
+                onChange={handleContentChange}
+                textareaRef={editorTextareaRef}
+              />
+              <div className="editor-split">
+                <EditorArea
+                  content={activeDoc.content}
+                  onChange={handleContentChange}
+                  onCursorChange={handleCursorChange}
+                  onListeningChange={handleListeningChange}
+                  cursorInsertPos={cursorInsertPos}
+                  onCursorInsertDone={() => setCursorInsertPos(null)}
+                  fontSize={fontSize}
+                  textareaRef={editorTextareaRef}
+                  bookmarks={bookmarks}
+                />
+                <MarkdownPreview
+                  content={activeDoc.content}
+                  visible={mdPreviewOpen && activeDoc.language === 'md'}
+                  onClose={() => setMdPreviewOpen(false)}
+                />
+              </div>
+            </>
           ) : (
             <div className="welcome-screen">
               <img className="logo-img" src="/citrusapp.png" alt="CitrusApp" height="80" />
@@ -266,6 +400,10 @@ export default function Editor() {
         language={activeDoc?.language || 'plaintext'}
         saveStatus={saveStatus}
         isListening={isListening}
+        charCount={activeDoc?.content.length}
+        fontSize={fontSize}
+        onToggleTheme={toggleTheme}
+        theme={theme}
       />
 
       <CommandPalette

@@ -199,10 +199,13 @@ export default function Editor() {
         e.preventDefault();
         flushSave();
       }
-      // Fix: ⌘⇧L - check both key values and code for cross-env compatibility
-      if (mod && e.shiftKey && (e.key === 'l' || e.key === 'L' || e.code === 'KeyL')) {
+      // Fix: ⌘⇧L or ⌘⇧H - date header (both shortcuts, H=Header as fallback)
+      if (mod && e.shiftKey && (e.key === 'l' || e.key === 'L' || e.code === 'KeyL' || e.key === 'h' || e.key === 'H' || e.code === 'KeyH')) {
         e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
         handleInsertHeader();
+        return;
       }
       if (mod && e.key === '/') {
         e.preventDefault();
@@ -253,8 +256,8 @@ export default function Editor() {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [activeDocId, closeTab, flushSave, handleCreateDocument, handleInsertHeader, changeFontSize, handleToggleBookmark, handleDownload]);
 
   const handleCloseActiveTab = useCallback(() => {
@@ -269,7 +272,7 @@ export default function Editor() {
     { name: 'Toggle Sidebar', shortcut: '⌘ \\', action: toggleSidebar },
     { name: 'Find & Replace', shortcut: '⌘ F', action: () => setSearchOpen(prev => !prev) },
     { name: 'Markdown Preview', shortcut: '⌘ ⇧ M', action: () => setMdPreviewOpen(prev => !prev) },
-    { name: 'Insert Date Header', shortcut: '⌘ ⇧ L', action: handleInsertHeader },
+    { name: 'Insert Date Header', shortcut: '⌘ ⇧ H', action: handleInsertHeader },
     { name: 'Toggle Bookmark', shortcut: '⌘ ⇧ B', action: handleToggleBookmark },
     { name: 'Next Bookmark', shortcut: '', action: handleNextBookmark },
     { name: 'Font Size +', shortcut: '⌘ +', action: () => changeFontSize(1) },
@@ -387,7 +390,7 @@ export default function Editor() {
                   <span>Command Palette</span>
                 </div>
                 <div className="shortcut-row">
-                  <kbd>⌘ ⇧ L</kbd>
+                  <kbd>⌘ ⇧ H</kbd>
                   <span>Insert Date Header</span>
                 </div>
                 <div className="shortcut-row">

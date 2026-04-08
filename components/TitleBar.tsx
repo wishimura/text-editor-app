@@ -19,7 +19,7 @@ const SHORTCUTS = [
   { key: '⌘ ⇧ K', desc: 'コマンドパレット' },
   { key: '⌘ \\', desc: 'サイドバー開閉' },
   { key: '⌘ S', desc: '保存' },
-  { key: '⌘ ⇧ L', desc: '日付ヘッダー挿入' },
+  { key: '⌘ ⇧ H', desc: '日付ヘッダー挿入' },
   { key: '⌘ /', desc: 'AIアシスタント開閉' },
   { key: 'Escape', desc: 'パネルを閉じる' },
 ];

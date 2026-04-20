@@ -363,6 +363,7 @@ export default function Editor() {
               />
               <div className="editor-split">
                 <EditorArea
+                  key={activeDocId || 'empty'}
                   content={activeDoc.content}
                   onChange={handleContentChange}
                   onCursorChange={handleCursorChange}

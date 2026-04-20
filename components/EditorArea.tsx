@@ -96,6 +96,13 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
     }
   }, []);
 
+  // Insert text using execCommand to preserve undo/redo history.
+  // Falls back to direct assignment if execCommand is unavailable.
+  const insertText = useCallback((text: string, fallbackFn?: () => void) => {
+    if (document.execCommand('insertText', false, text)) return;
+    fallbackFn?.();
+  }, []);
+
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -104,11 +111,13 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
       e.preventDefault();
       const start = ta.selectionStart;
       const end = ta.selectionEnd;
-      const val = ta.value;
-      const newVal = val.substring(0, start) + '  ' + val.substring(end);
-      ta.value = newVal;
-      ta.selectionStart = ta.selectionEnd = start + 2;
-      onChange(newVal);
+      insertText('  ', () => {
+        const val = ta.value;
+        const newVal = val.substring(0, start) + '  ' + val.substring(end);
+        ta.value = newVal;
+        ta.selectionStart = ta.selectionEnd = start + 2;
+        onChange(newVal);
+      });
       return;
     }
 
@@ -121,23 +130,46 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
         e.preventDefault();
         const selected = val.substring(start, end);
         const wrapped = e.key + selected + bracketPairs[e.key];
-        const newVal = val.substring(0, start) + wrapped + val.substring(end);
-        ta.value = newVal;
+        insertText(wrapped, () => {
+          const newVal = val.substring(0, start) + wrapped + val.substring(end);
+          ta.value = newVal;
+          onChange(newVal);
+        });
+        // Place cursor inside brackets (after opening char)
         ta.selectionStart = start + 1;
         ta.selectionEnd = end + 1;
-        onChange(newVal);
       } else {
         e.preventDefault();
-        const newVal = val.substring(0, start) + e.key + bracketPairs[e.key] + val.substring(end);
-        ta.value = newVal;
+        insertText(e.key + bracketPairs[e.key], () => {
+          const newVal = val.substring(0, start) + e.key + bracketPairs[e.key] + val.substring(end);
+          ta.value = newVal;
+          onChange(newVal);
+        });
         ta.selectionStart = ta.selectionEnd = start + 1;
-        onChange(newVal);
       }
     }
-  }, [onChange]);
+  }, [onChange, insertText]);
 
+  // Sync textarea DOM value only when content changes externally
+  // (e.g. header insert, voice input, doc switch via `key` prop).
+  // By using an uncontrolled textarea we prevent React's reconciler from
+  // ever resetting the cursor or clearing the browser's undo stack.
   useEffect(() => {
-    updateCursor();
+    const ta = textareaRef.current;
+    if (!ta) return;
+    if (ta.value !== content) {
+      // Content changed from outside — preserve cursor if possible
+      const savedStart = ta.selectionStart;
+      const savedEnd   = ta.selectionEnd;
+      ta.value = content;
+      ta.selectionStart = Math.min(savedStart, content.length);
+      ta.selectionEnd   = Math.min(savedEnd,   content.length);
+      cursorPosRef.current = Math.min(savedStart, content.length);
+    }
+    // Update status-bar display only when the textarea actually has focus
+    if (document.activeElement === ta) {
+      updateCursor();
+    }
   }, [content, updateCursor]);
 
   // Scroll to bottom on initial mount
@@ -197,12 +229,13 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
       <textarea
         ref={textareaRef}
         className="editor-textarea"
-        value={content}
+        defaultValue={content}
         onChange={(e) => onChange(e.target.value)}
         onScroll={syncScroll}
         onClick={updateCursor}
         onKeyUp={updateCursor}
         onKeyDown={handleKeyDown}
+        onSelect={updateCursor}
         spellCheck={false}
         autoComplete="off"
         autoCorrect="off"

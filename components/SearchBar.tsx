@@ -25,11 +25,23 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
       setMatches([]);
       setMatchIndex(0);
       requestAnimationFrame(() => searchRef.current?.focus());
+    } else {
+      // 閉じるとき: stateをリセットしてtextareaの選択範囲を解除
+      setQuery('');
+      setMatches([]);
+      setMatchIndex(0);
+      const ta = textareaRef.current;
+      if (ta) {
+        const pos = ta.selectionStart;
+        ta.selectionEnd = pos; // 選択範囲を折りたたむ
+        ta.focus();
+      }
     }
-  }, [visible]);
+  }, [visible, textareaRef]);
 
   useEffect(() => {
-    if (!query) {
+    // 非表示のときは絶対に動かさない
+    if (!visible || !query) {
       setMatches([]);
       setMatchIndex(0);
       return;
@@ -47,7 +59,7 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
     setMatches(found);
     setMatchIndex(0);
     if (found.length > 0) highlightMatch(found[0]);
-  }, [query, content]);
+  }, [visible, query, content]);
 
   const highlightMatch = useCallback((pos: number, focusTextarea = false) => {
     const ta = textareaRef.current;
@@ -88,14 +100,22 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
     onChange(newContent);
   }, [content, query, replace, onChange]);
 
+  const handleClose = useCallback(() => {
+    // stateをリセットしてからonCloseを呼ぶ（visible変化より先にstateを潰す）
+    setQuery('');
+    setMatches([]);
+    setMatchIndex(0);
+    onClose();
+  }, [onClose]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') onClose();
+    if (e.key === 'Escape') handleClose();
     if (e.key === 'Enter') {
       e.preventDefault();
       if (e.shiftKey) goPrev();
       else goNext();
     }
-  }, [onClose, goNext, goPrev]);
+  }, [handleClose, goNext, goPrev]);
 
   if (!visible) return null;
 
@@ -119,7 +139,7 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
         <button className="search-btn" onClick={() => setShowReplace(!showReplace)} title="Toggle Replace">
           {showReplace ? '−' : '⇄'}
         </button>
-        <button className="search-btn" onClick={onClose} title="Close">×</button>
+        <button className="search-btn" onClick={handleClose} title="Close">×</button>
       </div>
       {showReplace && (
         <div className="search-row">

@@ -18,6 +18,23 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
   const [matches, setMatches] = useState<number[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
 
+  // ── highlightMatch を先に定義（後のuseEffectから参照するため） ──────────
+  // focusTextarea=true  → textareaにフォーカスを残す（↑↓ボタン・Enter用）
+  // focusTextarea=false → スクロール後に検索欄へフォーカスを戻す（自動ハイライト用）
+  const highlightMatch = useCallback((pos: number, focusTextarea = false) => {
+    const ta = textareaRef.current;
+    if (!ta || pos < 0) return;
+    // ta.focus() でブラウザが自動的にカーソル位置までスクロールしてくれる
+    ta.focus();
+    ta.selectionStart = pos;
+    ta.selectionEnd = pos + query.length;
+    if (!focusTextarea) {
+      // 検索バー入力中はフォーカスを検索欄に戻す
+      requestAnimationFrame(() => searchRef.current?.focus());
+    }
+  }, [textareaRef, query]);
+
+  // ── visible 変化: 開閉のリセット処理 ────────────────────────────────────
   useEffect(() => {
     if (visible) {
       setQuery('');
@@ -26,21 +43,22 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
       setMatchIndex(0);
       requestAnimationFrame(() => searchRef.current?.focus());
     } else {
-      // 閉じるとき: stateをリセットしてtextareaの選択範囲を解除
+      // 閉じるとき: stateリセット + textareaの選択範囲を解除してフォーカスを戻す
       setQuery('');
       setMatches([]);
       setMatchIndex(0);
       const ta = textareaRef.current;
       if (ta) {
         const pos = ta.selectionStart;
-        ta.selectionEnd = pos; // 選択範囲を折りたたむ
+        ta.selectionEnd = pos; // 選択範囲を折りたたむ（カーソルを1点に）
         ta.focus();
       }
     }
   }, [visible, textareaRef]);
 
+  // ── 検索マッチ計算 ────────────────────────────────────────────────────────
   useEffect(() => {
-    // 非表示のときは絶対に動かさない
+    // 非表示 or クエリ空のときは動かさない
     if (!visible || !query) {
       setMatches([]);
       setMatchIndex(0);
@@ -58,21 +76,10 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
     }
     setMatches(found);
     setMatchIndex(0);
-    if (found.length > 0) highlightMatch(found[0]);
-  }, [visible, query, content]);
+    if (found.length > 0) highlightMatch(found[0], false);
+  }, [visible, query, content, highlightMatch]);
 
-  const highlightMatch = useCallback((pos: number, focusTextarea = false) => {
-    const ta = textareaRef.current;
-    if (!ta || pos < 0) return;
-    if (focusTextarea) ta.focus();
-    ta.selectionStart = pos;
-    ta.selectionEnd = pos + query.length;
-    // Scroll to selection
-    const lines = content.substring(0, pos).split('\n');
-    const lineHeight = 22.4;
-    ta.scrollTop = Math.max(0, (lines.length - 5) * lineHeight);
-  }, [textareaRef, query, content]);
-
+  // ── ナビゲーション ────────────────────────────────────────────────────────
   const goNext = useCallback(() => {
     if (matches.length === 0) return;
     const next = (matchIndex + 1) % matches.length;
@@ -87,6 +94,7 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
     highlightMatch(matches[prev], true);
   }, [matches, matchIndex, highlightMatch]);
 
+  // ── 置換 ──────────────────────────────────────────────────────────────────
   const handleReplace = useCallback(() => {
     if (matches.length === 0) return;
     const pos = matches[matchIndex];
@@ -100,16 +108,17 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
     onChange(newContent);
   }, [content, query, replace, onChange]);
 
+  // ── 閉じる ────────────────────────────────────────────────────────────────
   const handleClose = useCallback(() => {
-    // stateをリセットしてからonCloseを呼ぶ（visible変化より先にstateを潰す）
     setQuery('');
     setMatches([]);
     setMatchIndex(0);
     onClose();
   }, [onClose]);
 
+  // ── キーボード操作 ────────────────────────────────────────────────────────
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') handleClose();
+    if (e.key === 'Escape') { handleClose(); return; }
     if (e.key === 'Enter') {
       e.preventDefault();
       if (e.shiftKey) goPrev();
@@ -134,12 +143,12 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
         <span className="search-count">
           {matches.length > 0 ? `${matchIndex + 1}/${matches.length}` : 'No results'}
         </span>
-        <button className="search-btn" onClick={goPrev} title="Previous">↑</button>
-        <button className="search-btn" onClick={goNext} title="Next">↓</button>
-        <button className="search-btn" onClick={() => setShowReplace(!showReplace)} title="Toggle Replace">
+        <button className="search-btn" onClick={goPrev} title="前へ (Shift+Enter)">↑</button>
+        <button className="search-btn" onClick={goNext} title="次へ (Enter)">↓</button>
+        <button className="search-btn" onClick={() => setShowReplace(!showReplace)} title="置換">
           {showReplace ? '−' : '⇄'}
         </button>
-        <button className="search-btn" onClick={handleClose} title="Close">×</button>
+        <button className="search-btn" onClick={handleClose} title="閉じる (Esc)">×</button>
       </div>
       {showReplace && (
         <div className="search-row">

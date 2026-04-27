@@ -15,9 +15,6 @@ interface EditorAreaProps {
   bookmarks?: Set<number>;
 }
 
-const bracketPairs: Record<string, string> = {
-  '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`',
-};
 
 export default function EditorArea({ content, onChange, onCursorChange, onListeningChange, cursorInsertPos, onCursorInsertDone, fontSize = 14, textareaRef: externalRef, bookmarks }: EditorAreaProps) {
   const internalRef = useRef<HTMLTextAreaElement>(null);
@@ -96,59 +93,22 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
     }
   }, []);
 
-  // Insert text using execCommand to preserve undo/redo history.
-  // Falls back to direct assignment if execCommand is unavailable.
-  const insertText = useCallback((text: string, fallbackFn?: () => void) => {
-    if (document.execCommand('insertText', false, text)) return;
-    fallbackFn?.();
-  }, []);
-
+  // Tab key: insert 2 spaces (preserves undo history via execCommand)
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
     const ta = textareaRef.current;
-    if (!ta) return;
-
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      insertText('  ', () => {
-        const val = ta.value;
-        const newVal = val.substring(0, start) + '  ' + val.substring(end);
-        ta.value = newVal;
-        ta.selectionStart = ta.selectionEnd = start + 2;
-        onChange(newVal);
-      });
-      return;
-    }
-
-    if (bracketPairs[e.key]) {
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
+    if (!ta || e.key !== 'Tab') return;
+    e.preventDefault();
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    if (!document.execCommand('insertText', false, '  ')) {
+      // Fallback for browsers where execCommand is unavailable
       const val = ta.value;
-
-      if (start !== end) {
-        e.preventDefault();
-        const selected = val.substring(start, end);
-        const wrapped = e.key + selected + bracketPairs[e.key];
-        insertText(wrapped, () => {
-          const newVal = val.substring(0, start) + wrapped + val.substring(end);
-          ta.value = newVal;
-          onChange(newVal);
-        });
-        // Place cursor inside brackets (after opening char)
-        ta.selectionStart = start + 1;
-        ta.selectionEnd = end + 1;
-      } else {
-        e.preventDefault();
-        insertText(e.key + bracketPairs[e.key], () => {
-          const newVal = val.substring(0, start) + e.key + bracketPairs[e.key] + val.substring(end);
-          ta.value = newVal;
-          onChange(newVal);
-        });
-        ta.selectionStart = ta.selectionEnd = start + 1;
-      }
+      const newVal = val.substring(0, start) + '  ' + val.substring(end);
+      ta.value = newVal;
+      ta.selectionStart = ta.selectionEnd = start + 2;
+      onChange(newVal);
     }
-  }, [onChange, insertText]);
+  }, [onChange]);
 
   // Sync textarea DOM value only when content changes externally
   // (e.g. header insert, voice input, doc switch via `key` prop).

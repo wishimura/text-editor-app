@@ -34,8 +34,8 @@ export function useDocuments() {
         const lastDocId = localStorage.getItem('citrus_lastDocId');
         const lastDoc = data.find(d => d.id === lastDocId);
         if (lastDoc) {
-          setOpenTabs([lastDocId]);
-          setActiveDocId(lastDocId);
+          setOpenTabs([lastDoc.id]);
+          setActiveDocId(lastDoc.id);
           setEditingContent(lastDoc.content);
         }
       }

@@ -71,6 +71,10 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
     }
   }, [isListening, startListening, stopListening]);
 
+  // IME変換中フラグ — 変換中にcontent syncがta.valueを上書きすると
+  // 変換の1文字目だけ英字でコミットされるバグを防ぐ
+  const isComposingRef = useRef(false);
+
   const lineCount = useMemo(() => content.split('\n').length, [content]);
   const lineHeight = fontSize * 1.6;
 
@@ -111,9 +115,17 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
   }, [onChange]);
 
   const updateCursorRaf = useRef<number>(0);
+
+  // Sync textarea DOM value only when content changes externally
+  // (e.g. header insert, voice input, doc switch via `key` prop).
+  // By using an uncontrolled textarea we prevent React's reconciler from
+  // ever resetting the cursor or clearing the browser's undo stack.
+  // IMPORTANT: skip entirely during IME composition — setting ta.value mid-
+  // composition commits the first roman letter (e.g. "b") as English text.
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
+    if (isComposingRef.current) return; // don't interrupt IME
     if (ta.value !== content) {
       const savedStart = ta.selectionStart;
       const savedEnd   = ta.selectionEnd;
@@ -187,6 +199,8 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
         className="editor-textarea"
         defaultValue={content}
         onChange={(e) => onChange(e.target.value)}
+        onCompositionStart={() => { isComposingRef.current = true; }}
+        onCompositionEnd={() => { isComposingRef.current = false; }}
         onScroll={syncScroll}
         onClick={updateCursor}
         onKeyUp={updateCursor}

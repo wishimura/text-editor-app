@@ -19,18 +19,27 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
   const searchRef = useRef<HTMLInputElement>(null);
 
   // ── highlightMatch を先に定義（後のuseEffectから参照するため） ──────────
-  // focusTextarea=true  → textareaにフォーカスを残す（↑↓ボタン・Enter用）
-  // focusTextarea=false → スクロール後に検索欄へフォーカスを戻す（自動ハイライト用）
+  // focusTextarea=true  → textareaにフォーカスを移してブラウザにスクロールさせる（↑↓ボタン用）
+  // focusTextarea=false → フォーカスを奪わずに scrollTop で直接スクロール（自動ハイライト用）
   const highlightMatch = useCallback((pos: number, focusTextarea = false) => {
     const ta = textareaRef.current;
     if (!ta || pos < 0) return;
-    // ta.focus() でブラウザが自動的にカーソル位置までスクロールしてくれる
-    ta.focus();
+
+    // 選択範囲をセット（フォーカス時に視覚的にハイライトされる）
     ta.selectionStart = pos;
     ta.selectionEnd = pos + query.length;
-    if (!focusTextarea) {
-      // 検索バー入力中はフォーカスを検索欄に戻す
-      requestAnimationFrame(() => searchRef.current?.focus());
+
+    if (focusTextarea) {
+      // ↑↓ボタン押下時: textareaにフォーカスしてブラウザ標準のスクロールに任せる
+      ta.focus();
+    } else {
+      // 検索ワード入力中: フォーカスを奪わずに scrollTop で確実にスクロール
+      const linesBefore = ta.value.substring(0, pos).split('\n');
+      const lineNum = linesBefore.length - 1; // 0-indexed
+      const lineHeightPx = parseFloat(getComputedStyle(ta).lineHeight) || 22.4;
+      // マッチ行を画面中央よりやや上に表示
+      const target = Math.max(0, lineNum * lineHeightPx - ta.clientHeight / 3);
+      ta.scrollTop = target;
     }
   }, [textareaRef, query]);
 

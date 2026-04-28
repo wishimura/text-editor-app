@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, memo } from 'react';
 import { Document, getFileIcon } from '@/lib/types';
 
 interface SidebarProps {
@@ -14,7 +14,7 @@ interface SidebarProps {
   onMoveToFolder?: (id: string, folder: string) => void;
 }
 
-export default function Sidebar({
+function SidebarInner({
   documents,
   activeDocId,
   collapsed,
@@ -255,3 +255,5 @@ export default function Sidebar({
     </aside>
   );
 }
+
+export default memo(SidebarInner);

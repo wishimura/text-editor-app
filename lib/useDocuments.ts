@@ -12,6 +12,7 @@ export function useDocuments() {
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [editingContent, setEditingContent] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const localContentRef = useRef<Map<string, string>>(new Map());
   const restoredRef = useRef(false);
@@ -31,9 +32,11 @@ export function useDocuments() {
       if (!restoredRef.current) {
         restoredRef.current = true;
         const lastDocId = localStorage.getItem('citrus_lastDocId');
-        if (lastDocId && data.some(d => d.id === lastDocId)) {
+        const lastDoc = data.find(d => d.id === lastDocId);
+        if (lastDoc) {
           setOpenTabs([lastDocId]);
           setActiveDocId(lastDocId);
+          setEditingContent(lastDoc.content);
         }
       }
     }
@@ -51,12 +54,17 @@ export function useDocuments() {
     }
   }, [activeDocId]);
 
-  const activeDoc = documents.find(d => d.id === activeDocId) || null;
+  const baseActiveDoc = documents.find(d => d.id === activeDocId) || null;
+  const activeDoc = baseActiveDoc && editingContent !== null
+    ? { ...baseActiveDoc, content: editingContent }
+    : baseActiveDoc;
 
   const openDocument = useCallback((id: string) => {
     setOpenTabs(prev => prev.includes(id) ? prev : [...prev, id]);
     setActiveDocId(id);
-  }, []);
+    const doc = documents.find(d => d.id === id);
+    setEditingContent(doc ? doc.content : null);
+  }, [documents]);
 
   const closeTab = useCallback((id: string) => {
     setOpenTabs(prev => {
@@ -66,6 +74,12 @@ export function useDocuments() {
       if (id === activeDocId) {
         const newActive = next[Math.min(idx, next.length - 1)] || null;
         setActiveDocId(newActive);
+        if (newActive) {
+          const doc = localContentRef.current.get(newActive);
+          setEditingContent(doc ?? null);
+        } else {
+          setEditingContent(null);
+        }
       }
       return next;
     });
@@ -100,14 +114,15 @@ export function useDocuments() {
 
   const updateContent = useCallback((id: string, content: string) => {
     localContentRef.current.set(id, content);
-    setDocuments(prev =>
-      prev.map(d => d.id === id ? { ...d, content } : d)
-    );
+    setEditingContent(content);
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     setSaveStatus('saving');
 
     saveTimerRef.current = setTimeout(async () => {
+      setDocuments(prev =>
+        prev.map(d => d.id === id ? { ...d, content } : d)
+      );
       const { error } = await getSupabase()
         .from('documents')
         .update({ content, updated_at: new Date().toISOString() })
@@ -160,6 +175,13 @@ export function useDocuments() {
     }
   }, []);
 
+  const switchTab = useCallback((id: string) => {
+    setActiveDocId(id);
+    const content = localContentRef.current.get(id);
+    const doc = documents.find(d => d.id === id);
+    setEditingContent(content ?? doc?.content ?? null);
+  }, [documents]);
+
   return {
     documents,
     openTabs,
@@ -169,7 +191,7 @@ export function useDocuments() {
     saveStatus,
     openDocument,
     closeTab,
-    setActiveDocId,
+    setActiveDocId: switchTab,
     createDocument,
     deleteDocument,
     updateContent,

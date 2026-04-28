@@ -136,8 +136,10 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
     }
   }, [onChange]);
 
+  const updateCursorRaf = useRef<number>(0);
   useEffect(() => {
-    updateCursor();
+    cancelAnimationFrame(updateCursorRaf.current);
+    updateCursorRaf.current = requestAnimationFrame(updateCursor);
   }, [content, updateCursor]);
 
   // Scroll to bottom on initial mount

@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { langMap } from '@/lib/types';
 import { SaveStatus } from '@/lib/useDocuments';
 
@@ -22,7 +23,7 @@ const saveLabels: Record<SaveStatus, string> = {
   error: 'Save failed',
 };
 
-export default function StatusBar({ line, col, language, saveStatus, isListening, charCount, fontSize, onToggleTheme, theme }: StatusBarProps) {
+function StatusBarInner({ line, col, language, saveStatus, isListening, charCount, fontSize, onToggleTheme, theme }: StatusBarProps) {
   return (
     <div className="status-bar">
       <div className="status-left">
@@ -68,3 +69,5 @@ export default function StatusBar({ line, col, language, saveStatus, isListening
     </div>
   );
 }
+
+export default memo(StatusBarInner);

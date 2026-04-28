@@ -110,15 +110,11 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
     }
   }, [onChange]);
 
-  // Sync textarea DOM value only when content changes externally
-  // (e.g. header insert, voice input, doc switch via `key` prop).
-  // By using an uncontrolled textarea we prevent React's reconciler from
-  // ever resetting the cursor or clearing the browser's undo stack.
+  const updateCursorRaf = useRef<number>(0);
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
     if (ta.value !== content) {
-      // Content changed from outside — preserve cursor if possible
       const savedStart = ta.selectionStart;
       const savedEnd   = ta.selectionEnd;
       ta.value = content;
@@ -126,9 +122,9 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
       ta.selectionEnd   = Math.min(savedEnd,   content.length);
       cursorPosRef.current = Math.min(savedStart, content.length);
     }
-    // Update status-bar display only when the textarea actually has focus
     if (document.activeElement === ta) {
-      updateCursor();
+      cancelAnimationFrame(updateCursorRaf.current);
+      updateCursorRaf.current = requestAnimationFrame(updateCursor);
     }
   }, [content, updateCursor]);
 

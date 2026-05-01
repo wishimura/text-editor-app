@@ -19,27 +19,28 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
   const searchRef = useRef<HTMLInputElement>(null);
 
   // ── highlightMatch を先に定義（後のuseEffectから参照するため） ──────────
-  // focusTextarea=true  → textareaにフォーカスを移してブラウザにスクロールさせる（↑↓ボタン用）
-  // focusTextarea=false → フォーカスを奪わずに scrollTop で直接スクロール（自動ハイライト用）
+  // focusTextarea=true  → textareaにフォーカスを残す（↑↓ボタン用）
+  // focusTextarea=false → ハイライト表示後に検索欄へフォーカスを戻す（自動ハイライト用）
   const highlightMatch = useCallback((pos: number, focusTextarea = false) => {
     const ta = textareaRef.current;
     if (!ta || pos < 0) return;
 
-    // 選択範囲をセット（フォーカス時に視覚的にハイライトされる）
+    // 1. フォーカスして選択範囲をセット
+    //    → フォーカスがないとブラウザは選択範囲を視覚的に表示しない
+    ta.focus();
     ta.selectionStart = pos;
     ta.selectionEnd = pos + query.length;
 
-    if (focusTextarea) {
-      // ↑↓ボタン押下時: textareaにフォーカスしてブラウザ標準のスクロールに任せる
-      ta.focus();
-    } else {
-      // 検索ワード入力中: フォーカスを奪わずに scrollTop で確実にスクロール
-      const linesBefore = ta.value.substring(0, pos).split('\n');
-      const lineNum = linesBefore.length - 1; // 0-indexed
-      const lineHeightPx = parseFloat(getComputedStyle(ta).lineHeight) || 22.4;
-      // マッチ行を画面中央よりやや上に表示
-      const target = Math.max(0, lineNum * lineHeightPx - ta.clientHeight / 3);
-      ta.scrollTop = target;
+    // 2. scrollTop を明示的に上書き（行番号から精密に計算）
+    //    focus() による暗黙のスクロールより後に実行するので最終的にこちらが勝つ
+    const linesBefore = ta.value.substring(0, pos).split('\n');
+    const lineNum = linesBefore.length - 1;
+    const lineHeightPx = parseFloat(getComputedStyle(ta).lineHeight) || 22.4;
+    ta.scrollTop = Math.max(0, lineNum * lineHeightPx - ta.clientHeight / 3);
+
+    // 3. 検索ワード入力中の場合は検索欄にフォーカスを戻す（ユーザーが引き続き入力できるように）
+    if (!focusTextarea) {
+      requestAnimationFrame(() => searchRef.current?.focus());
     }
   }, [textareaRef, query]);
 
@@ -113,7 +114,10 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
 
   const handleReplaceAll = useCallback(() => {
     if (!query) return;
-    const newContent = content.split(query).join(replace);
+    // 検索と同じく大文字小文字を無視して全置換（gi フラグ）
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, 'gi');
+    const newContent = content.replace(regex, replace);
     onChange(newContent);
   }, [content, query, replace, onChange]);
 

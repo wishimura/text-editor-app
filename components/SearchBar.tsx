@@ -94,14 +94,17 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
     if (matches.length === 0) return;
     const next = (matchIndex + 1) % matches.length;
     setMatchIndex(next);
-    highlightMatch(matches[next], true);
+    // false = ハイライト後に検索欄へフォーカスを戻す
+    // true のままにすると textarea がフォーカスを持った状態になり、
+    // 次の Enter キーが textarea に届いて選択中テキストを削除してしまう
+    highlightMatch(matches[next], false);
   }, [matches, matchIndex, highlightMatch]);
 
   const goPrev = useCallback(() => {
     if (matches.length === 0) return;
     const prev = (matchIndex - 1 + matches.length) % matches.length;
     setMatchIndex(prev);
-    highlightMatch(matches[prev], true);
+    highlightMatch(matches[prev], false);
   }, [matches, matchIndex, highlightMatch]);
 
   // ── 置換 ──────────────────────────────────────────────────────────────────

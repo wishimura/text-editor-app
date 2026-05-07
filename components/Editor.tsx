@@ -38,11 +38,14 @@ export default function Editor() {
     return false;
   });
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const cursorPosRef = useRef({ line: 1, col: 1 });
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
+  const cursorRaf = useRef(0);
   const [isListening, setIsListening] = useState(false);
   const [voiceNewDocMode, setVoiceNewDocMode] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [charCount, setCharCount] = useState(0);
   const [mdPreviewOpen, setMdPreviewOpen] = useState(false);
   const [cursorInsertPos, setCursorInsertPos] = useState<number | null>(null);
   const [bookmarks, setBookmarks] = useState<Set<number>>(new Set());
@@ -115,13 +118,20 @@ export default function Editor() {
   }, [deleteDocument]);
 
   const handleCursorChange = useCallback((line: number, col: number) => {
-    setCursorPos({ line, col });
+    cursorPosRef.current = { line, col };
+    cancelAnimationFrame(cursorRaf.current);
+    cursorRaf.current = requestAnimationFrame(() => {
+      setCursorPos({ line, col });
+    });
   }, []);
 
+  const charCountTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const handleContentChange = useCallback((content: string) => {
     if (activeDocId) {
       updateContent(activeDocId, content);
     }
+    clearTimeout(charCountTimer.current);
+    charCountTimer.current = setTimeout(() => setCharCount(content.length), 300);
   }, [activeDocId, updateContent]);
 
   const handleListeningChange = useCallback((listening: boolean) => {
@@ -133,21 +143,22 @@ export default function Editor() {
   }, []);
 
   const handleInsertHeader = useCallback(() => {
-    if (!activeDocId || !activeDoc) return;
+    if (!activeDocId) return;
+    const currentContent = editorTextareaRef.current?.value ?? '';
     const today = new Date();
     const dateStr = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
     const separator = '----------------------------------------';
     const beforeCursor = `\n\n${separator}\n${dateStr} `;
     const afterCursor = `\n${separator}\n`;
-    const newContent = activeDoc.content + beforeCursor + afterCursor;
+    const newContent = currentContent + beforeCursor + afterCursor;
     updateContent(activeDocId, newContent);
-    setCursorInsertPos(activeDoc.content.length + beforeCursor.length);
-  }, [activeDocId, activeDoc, updateContent]);
+    setCursorInsertPos(currentContent.length + beforeCursor.length);
+  }, [activeDocId, updateContent]);
 
-  // Download current file
   const handleDownload = useCallback(() => {
     if (!activeDoc) return;
-    const blob = new Blob([activeDoc.content], { type: 'text/plain;charset=utf-8' });
+    const currentContent = editorTextareaRef.current?.value ?? activeDoc.content;
+    const blob = new Blob([currentContent], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -156,31 +167,30 @@ export default function Editor() {
     URL.revokeObjectURL(url);
   }, [activeDoc]);
 
-  // Toggle bookmark on current line
   const handleToggleBookmark = useCallback(() => {
+    const line = cursorPosRef.current.line;
     setBookmarks(prev => {
       const next = new Set(prev);
-      if (next.has(cursorPos.line)) next.delete(cursorPos.line);
-      else next.add(cursorPos.line);
+      if (next.has(line)) next.delete(line);
+      else next.add(line);
       return next;
     });
-  }, [cursorPos.line]);
+  }, []);
 
-  // Go to next bookmark
   const handleNextBookmark = useCallback(() => {
     if (bookmarks.size === 0) return;
     const sorted = Array.from(bookmarks).sort((a, b) => a - b);
-    const next = sorted.find(b => b > cursorPos.line) || sorted[0];
-    // Jump to that line
-    if (activeDoc && editorTextareaRef.current) {
-      const lines = activeDoc.content.split('\n');
+    const currentLine = cursorPosRef.current.line;
+    const next = sorted.find(b => b > currentLine) || sorted[0];
+    if (editorTextareaRef.current) {
+      const lines = editorTextareaRef.current.value.split('\n');
       let pos = 0;
       for (let i = 0; i < Math.min(next - 1, lines.length); i++) {
         pos += lines[i].length + 1;
       }
       setCursorInsertPos(pos);
     }
-  }, [bookmarks, cursorPos.line, activeDoc]);
+  }, [bookmarks]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -418,7 +428,7 @@ export default function Editor() {
         language={activeDoc?.language || 'plaintext'}
         saveStatus={saveStatus}
         isListening={isListening}
-        charCount={activeDoc?.content.length}
+        charCount={charCount}
         fontSize={fontSize}
         onToggleTheme={toggleTheme}
         theme={theme}

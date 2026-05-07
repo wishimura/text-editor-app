@@ -18,6 +18,21 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
   const [matches, setMatches] = useState<number[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
 
+  const getContent = useCallback(() => {
+    return textareaRef.current?.value ?? content;
+  }, [textareaRef, content]);
+
+  const highlightMatch = useCallback((pos: number, focusTextarea = false) => {
+    const ta = textareaRef.current;
+    if (!ta || pos < 0) return;
+    ta.focus();
+    ta.selectionStart = pos;
+    ta.selectionEnd = pos + query.length;
+    if (!focusTextarea) {
+      requestAnimationFrame(() => searchRef.current?.focus());
+    }
+  }, [textareaRef, query]);
+
   useEffect(() => {
     if (visible) {
       setQuery('');
@@ -25,17 +40,28 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
       setMatches([]);
       setMatchIndex(0);
       requestAnimationFrame(() => searchRef.current?.focus());
+    } else {
+      setQuery('');
+      setMatches([]);
+      setMatchIndex(0);
+      const ta = textareaRef.current;
+      if (ta) {
+        const pos = ta.selectionStart;
+        ta.selectionEnd = pos;
+        ta.focus();
+      }
     }
-  }, [visible]);
+  }, [visible, textareaRef]);
 
   useEffect(() => {
-    if (!query) {
+    if (!visible || !query) {
       setMatches([]);
       setMatchIndex(0);
       return;
     }
+    const text = getContent();
     const found: number[] = [];
-    const lower = content.toLowerCase();
+    const lower = text.toLowerCase();
     const q = query.toLowerCase();
     let idx = 0;
     while (true) {
@@ -46,20 +72,8 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
     }
     setMatches(found);
     setMatchIndex(0);
-    if (found.length > 0) highlightMatch(found[0]);
-  }, [query, content]);
-
-  const highlightMatch = useCallback((pos: number, focusTextarea = false) => {
-    const ta = textareaRef.current;
-    if (!ta || pos < 0) return;
-    if (focusTextarea) ta.focus();
-    ta.selectionStart = pos;
-    ta.selectionEnd = pos + query.length;
-    // Scroll to selection
-    const lines = content.substring(0, pos).split('\n');
-    const lineHeight = 22.4;
-    ta.scrollTop = Math.max(0, (lines.length - 5) * lineHeight);
-  }, [textareaRef, query, content]);
+    if (found.length > 0) highlightMatch(found[0], false);
+  }, [visible, query, highlightMatch, getContent]);
 
   const goNext = useCallback(() => {
     if (matches.length === 0) return;
@@ -77,25 +91,34 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
 
   const handleReplace = useCallback(() => {
     if (matches.length === 0) return;
+    const text = getContent();
     const pos = matches[matchIndex];
-    const newContent = content.substring(0, pos) + replace + content.substring(pos + query.length);
+    const newContent = text.substring(0, pos) + replace + text.substring(pos + query.length);
     onChange(newContent);
-  }, [matches, matchIndex, content, query, replace, onChange]);
+  }, [matches, matchIndex, query, replace, onChange, getContent]);
 
   const handleReplaceAll = useCallback(() => {
     if (!query) return;
-    const newContent = content.split(query).join(replace);
+    const text = getContent();
+    const newContent = text.split(query).join(replace);
     onChange(newContent);
-  }, [content, query, replace, onChange]);
+  }, [query, replace, onChange, getContent]);
+
+  const handleClose = useCallback(() => {
+    setQuery('');
+    setMatches([]);
+    setMatchIndex(0);
+    onClose();
+  }, [onClose]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') onClose();
+    if (e.key === 'Escape') { handleClose(); return; }
     if (e.key === 'Enter') {
       e.preventDefault();
       if (e.shiftKey) goPrev();
       else goNext();
     }
-  }, [onClose, goNext, goPrev]);
+  }, [handleClose, goNext, goPrev]);
 
   if (!visible) return null;
 
@@ -114,12 +137,12 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
         <span className="search-count">
           {matches.length > 0 ? `${matchIndex + 1}/${matches.length}` : 'No results'}
         </span>
-        <button className="search-btn" onClick={goPrev} title="Previous">↑</button>
-        <button className="search-btn" onClick={goNext} title="Next">↓</button>
-        <button className="search-btn" onClick={() => setShowReplace(!showReplace)} title="Toggle Replace">
+        <button className="search-btn" onClick={goPrev} title="前へ (Shift+Enter)">↑</button>
+        <button className="search-btn" onClick={goNext} title="次へ (Enter)">↓</button>
+        <button className="search-btn" onClick={() => setShowReplace(!showReplace)} title="置換">
           {showReplace ? '−' : '⇄'}
         </button>
-        <button className="search-btn" onClick={onClose} title="Close">×</button>
+        <button className="search-btn" onClick={handleClose} title="閉じる (Esc)">×</button>
       </div>
       {showReplace && (
         <div className="search-row">

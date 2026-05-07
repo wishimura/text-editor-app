@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useCallback, useState, KeyboardEvent, useMemo } from 'react';
+import { useRef, useEffect, useCallback, KeyboardEvent, useMemo } from 'react';
 import { useSpeechRecognition } from '@/lib/useSpeechRecognition';
 
 interface EditorAreaProps {
@@ -23,8 +23,9 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef = externalRef || internalRef;
   const lineNumbersRef = useRef<HTMLDivElement>(null);
-  const [cursorLine, setCursorLine] = useState(1);
   const cursorPosRef = useRef(0);
+  const cursorLineRef = useRef(1);
+  const prevActiveLineEl = useRef<Element | null>(null);
   const initialScrollDone = useRef(false);
 
   const {
@@ -36,12 +37,10 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
     stop: stopListening,
   } = useSpeechRecognition();
 
-  // Notify parent about listening state
   useEffect(() => {
     onListeningChange?.(isListening);
   }, [isListening, onListeningChange]);
 
-  // Insert finalized transcript at cursor position
   const prevTranscriptRef = useRef('');
   useEffect(() => {
     if (transcript && transcript !== prevTranscriptRef.current) {
@@ -49,18 +48,15 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
       const ta = textareaRef.current;
       if (!ta) return;
       const pos = cursorPosRef.current;
-      const before = content.substring(0, pos);
-      const after = content.substring(pos);
-      const newContent = before + transcript + after;
-      onChange(newContent);
-      requestAnimationFrame(() => {
-        if (ta) {
-          ta.selectionStart = ta.selectionEnd = pos + transcript.length;
-          cursorPosRef.current = pos + transcript.length;
-        }
-      });
+      const before = ta.value.substring(0, pos);
+      const after = ta.value.substring(pos);
+      const newVal = before + transcript + after;
+      ta.value = newVal;
+      ta.selectionStart = ta.selectionEnd = pos + transcript.length;
+      cursorPosRef.current = pos + transcript.length;
+      onChange(newVal);
     }
-  }, [transcript, content, onChange]);
+  }, [transcript, onChange]);
 
   const handleMicClick = useCallback(() => {
     if (isListening) {
@@ -77,18 +73,30 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
   const lineCount = useMemo(() => content.split('\n').length, [content]);
   const lineHeight = fontSize * 1.6;
 
+  const highlightActiveLine = useCallback((line: number) => {
+    if (prevActiveLineEl.current) {
+      prevActiveLineEl.current.classList.remove('active');
+    }
+    const container = lineNumbersRef.current;
+    if (container && line >= 1 && line <= container.children.length) {
+      const el = container.children[line - 1];
+      el.classList.add('active');
+      prevActiveLineEl.current = el;
+    }
+  }, []);
+
   const updateCursor = useCallback(() => {
     const ta = textareaRef.current;
     if (!ta) return;
-    const text = ta.value;
     const pos = ta.selectionStart;
     cursorPosRef.current = pos;
-    const lines = text.substring(0, pos).split('\n');
+    const lines = ta.value.substring(0, pos).split('\n');
     const line = lines.length;
     const col = lines[lines.length - 1].length + 1;
-    setCursorLine(line);
+    cursorLineRef.current = line;
+    highlightActiveLine(line);
     onCursorChange(line, col);
-  }, [onCursorChange]);
+  }, [onCursorChange, highlightActiveLine]);
 
   const syncScroll = useCallback(() => {
     if (lineNumbersRef.current && textareaRef.current) {
@@ -136,11 +144,19 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
     }
   }, [onChange]);
 
-  const updateCursorRaf = useRef<number>(0);
+  // Sync textarea value when content changes externally (header insert, voice, doc switch)
   useEffect(() => {
-    cancelAnimationFrame(updateCursorRaf.current);
-    updateCursorRaf.current = requestAnimationFrame(updateCursor);
-  }, [content, updateCursor]);
+    const ta = textareaRef.current;
+    if (!ta) return;
+    if (ta.value !== content) {
+      const savedStart = ta.selectionStart;
+      const savedEnd = ta.selectionEnd;
+      ta.value = content;
+      ta.selectionStart = Math.min(savedStart, content.length);
+      ta.selectionEnd = Math.min(savedEnd, content.length);
+      cursorPosRef.current = Math.min(savedStart, content.length);
+    }
+  }, [content]);
 
   // Scroll to bottom on initial mount
   useEffect(() => {
@@ -164,9 +180,8 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
     if (cursorInsertPos != null && textareaRef.current) {
       const ta = textareaRef.current;
       ta.focus();
-      const pos = cursorInsertPos;
-      ta.selectionStart = ta.selectionEnd = pos;
-      cursorPosRef.current = pos;
+      ta.selectionStart = ta.selectionEnd = cursorInsertPos;
+      cursorPosRef.current = cursorInsertPos;
       ta.blur();
       ta.focus();
       updateCursor();
@@ -174,6 +189,7 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
     }
   }, [cursorInsertPos, onCursorInsertDone, updateCursor]);
 
+  // Line numbers: NO dependency on cursorLine (active highlight is via DOM)
   const lineNumbers = useMemo(() => {
     const nums = [];
     for (let i = 1; i <= Math.max(lineCount, 1); i++) {
@@ -181,7 +197,7 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
       nums.push(
         <span
           key={i}
-          className={`line-num${i === cursorLine ? ' active' : ''}${hasBookmark ? ' bookmarked' : ''}`}
+          className={`line-num${hasBookmark ? ' bookmarked' : ''}`}
           style={{ height: lineHeight }}
         >
           {hasBookmark ? '●' : i}
@@ -189,7 +205,20 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
       );
     }
     return nums;
-  }, [lineCount, cursorLine, bookmarks, lineHeight]);
+  }, [lineCount, bookmarks, lineHeight]);
+
+  // Re-highlight after line numbers rebuild
+  useEffect(() => {
+    prevActiveLineEl.current = null;
+    highlightActiveLine(cursorLineRef.current);
+  }, [lineNumbers, highlightActiveLine]);
+
+  const handleInput = useCallback(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    onChange(ta.value);
+    requestAnimationFrame(updateCursor);
+  }, [onChange, updateCursor]);
 
   return (
     <div className="editor-wrapper">
@@ -199,8 +228,8 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
       <textarea
         ref={textareaRef}
         className="editor-textarea"
-        value={content}
-        onChange={(e) => onChange(e.target.value)}
+        defaultValue={content}
+        onInput={handleInput}
         onScroll={syncScroll}
         onClick={updateCursor}
         onKeyUp={updateCursor}

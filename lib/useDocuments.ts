@@ -12,7 +12,6 @@ export function useDocuments() {
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
-  const [editingContent, setEditingContent] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const localContentRef = useRef<Map<string, string>>(new Map());
   const restoredRef = useRef(false);
@@ -28,7 +27,6 @@ export function useDocuments() {
       setDocuments(data);
       data.forEach(doc => localContentRef.current.set(doc.id, doc.content));
 
-      // Restore last opened document on first load
       if (!restoredRef.current) {
         restoredRef.current = true;
         const lastDocId = localStorage.getItem('citrus_lastDocId');
@@ -36,7 +34,6 @@ export function useDocuments() {
         if (lastDoc) {
           setOpenTabs([lastDoc.id]);
           setActiveDocId(lastDoc.id);
-          setEditingContent(lastDoc.content);
         }
       }
     }
@@ -47,24 +44,18 @@ export function useDocuments() {
     fetchDocuments();
   }, [fetchDocuments]);
 
-  // Persist active doc id to localStorage
   useEffect(() => {
     if (activeDocId) {
       localStorage.setItem('citrus_lastDocId', activeDocId);
     }
   }, [activeDocId]);
 
-  const baseActiveDoc = documents.find(d => d.id === activeDocId) || null;
-  const activeDoc = baseActiveDoc && editingContent !== null
-    ? { ...baseActiveDoc, content: editingContent }
-    : baseActiveDoc;
+  const activeDoc = documents.find(d => d.id === activeDocId) || null;
 
   const openDocument = useCallback((id: string) => {
     setOpenTabs(prev => prev.includes(id) ? prev : [...prev, id]);
     setActiveDocId(id);
-    const doc = documents.find(d => d.id === id);
-    setEditingContent(doc ? doc.content : null);
-  }, [documents]);
+  }, []);
 
   const closeTab = useCallback((id: string) => {
     setOpenTabs(prev => {
@@ -74,12 +65,6 @@ export function useDocuments() {
       if (id === activeDocId) {
         const newActive = next[Math.min(idx, next.length - 1)] || null;
         setActiveDocId(newActive);
-        if (newActive) {
-          const doc = localContentRef.current.get(newActive);
-          setEditingContent(doc ?? null);
-        } else {
-          setEditingContent(null);
-        }
       }
       return next;
     });
@@ -114,7 +99,6 @@ export function useDocuments() {
 
   const updateContent = useCallback((id: string, content: string) => {
     localContentRef.current.set(id, content);
-    setEditingContent(content);
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     setSaveStatus('saving');
@@ -175,13 +159,6 @@ export function useDocuments() {
     }
   }, []);
 
-  const switchTab = useCallback((id: string) => {
-    setActiveDocId(id);
-    const content = localContentRef.current.get(id);
-    const doc = documents.find(d => d.id === id);
-    setEditingContent(content ?? doc?.content ?? null);
-  }, [documents]);
-
   return {
     documents,
     openTabs,
@@ -191,7 +168,7 @@ export function useDocuments() {
     saveStatus,
     openDocument,
     closeTab,
-    setActiveDocId: switchTab,
+    setActiveDocId,
     createDocument,
     deleteDocument,
     updateContent,

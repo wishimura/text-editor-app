@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useCallback, KeyboardEvent, useMemo } from 'react';
+import { useRef, useEffect, useCallback, KeyboardEvent, useMemo, memo } from 'react';
 import { useSpeechRecognition } from '@/lib/useSpeechRecognition';
 
 interface EditorAreaProps {
@@ -19,7 +19,7 @@ const bracketPairs: Record<string, string> = {
   '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`',
 };
 
-export default function EditorArea({ content, onChange, onCursorChange, onListeningChange, cursorInsertPos, onCursorInsertDone, fontSize = 14, textareaRef: externalRef, bookmarks }: EditorAreaProps) {
+function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange, cursorInsertPos, onCursorInsertDone, fontSize = 14, textareaRef: externalRef, bookmarks }: EditorAreaProps) {
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef = externalRef || internalRef;
   const lineNumbersRef = useRef<HTMLDivElement>(null);
@@ -270,3 +270,5 @@ export default function EditorArea({ content, onChange, onCursorChange, onListen
     </div>
   );
 }
+
+export default memo(EditorAreaInner);

@@ -117,12 +117,13 @@ export default function Editor() {
     }
   }, [deleteDocument]);
 
+  const cursorTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const handleCursorChange = useCallback((line: number, col: number) => {
     cursorPosRef.current = { line, col };
-    cancelAnimationFrame(cursorRaf.current);
-    cursorRaf.current = requestAnimationFrame(() => {
+    clearTimeout(cursorTimer.current);
+    cursorTimer.current = setTimeout(() => {
       setCursorPos({ line, col });
-    });
+    }, 150);
   }, []);
 
   const charCountTimer = useRef<ReturnType<typeof setTimeout>>(undefined);

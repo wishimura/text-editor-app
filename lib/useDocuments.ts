@@ -97,11 +97,15 @@ export function useDocuments() {
     }
   }, [closeTab]);
 
+  const saveStatusRef = useRef<SaveStatus>('idle');
   const updateContent = useCallback((id: string, content: string) => {
     localContentRef.current.set(id, content);
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    setSaveStatus('saving');
+    if (saveStatusRef.current !== 'saving') {
+      saveStatusRef.current = 'saving';
+      setSaveStatus('saving');
+    }
 
     saveTimerRef.current = setTimeout(async () => {
       setDocuments(prev =>
@@ -112,9 +116,14 @@ export function useDocuments() {
         .update({ content, updated_at: new Date().toISOString() })
         .eq('id', id);
 
-      setSaveStatus(error ? 'error' : 'saved');
+      const next = error ? 'error' : 'saved';
+      saveStatusRef.current = next;
+      setSaveStatus(next);
       if (!error) {
-        setTimeout(() => setSaveStatus('idle'), 2000);
+        setTimeout(() => {
+          saveStatusRef.current = 'idle';
+          setSaveStatus('idle');
+        }, 2000);
       }
     }, 1000);
   }, []);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useDocuments } from '@/lib/useDocuments';
 import TitleBar from './TitleBar';
 import Sidebar from './Sidebar';
@@ -275,25 +275,81 @@ export default function Editor() {
     if (activeDocId) closeTab(activeDocId);
   }, [activeDocId, closeTab]);
 
-  const commands = [
+  const handleCursorInsertDone = useCallback(() => {
+    setCursorInsertPos(null);
+  }, []);
+
+  const handleCloseSearch = useCallback(() => {
+    setSearchOpen(false);
+  }, []);
+
+  const handleCloseMdPreview = useCallback(() => {
+    setMdPreviewOpen(false);
+  }, []);
+
+  const handleCloseAiPanel = useCallback(() => {
+    setAiPanelOpen(false);
+  }, []);
+
+  const handleCloseCommandPalette = useCallback(() => {
+    setCommandPaletteOpen(false);
+  }, []);
+
+  const handleCloseVoiceNewDoc = useCallback(() => {
+    setVoiceNewDocMode(false);
+  }, []);
+
+  const handleToggleSearch = useCallback(() => {
+    setSearchOpen(prev => !prev);
+  }, []);
+
+  const handleToggleMdPreview = useCallback(() => {
+    setMdPreviewOpen(prev => !prev);
+  }, []);
+
+  const handleToggleAiPanel = useCallback(() => {
+    setAiPanelOpen(prev => !prev);
+  }, []);
+
+  const handleFontSizeUp = useCallback(() => {
+    changeFontSize(1);
+  }, [changeFontSize]);
+
+  const handleFontSizeDown = useCallback(() => {
+    changeFontSize(-1);
+  }, [changeFontSize]);
+
+  const handleVoiceNewDocComplete = useCallback(async (text: string) => {
+    const timestamp = new Date().toLocaleString('ja-JP');
+    const doc = await createDocument(`voice-${Date.now()}.md`);
+    if (doc) {
+      updateContent(doc.id, `# Voice Note - ${timestamp}\n\n${text}\n`);
+    }
+  }, [createDocument, updateContent]);
+
+  const handleSidebarOverlayClick = useCallback(() => {
+    setSidebarCollapsed(true);
+  }, []);
+
+  const commands = useMemo(() => [
     { name: 'New File', shortcut: '⌘ ⇧ E', action: handleCreateDocument },
     { name: 'Open File', shortcut: '⌘ O', action: handleOpenFile },
     { name: 'Download File', shortcut: '⌘ ⇧ S', action: handleDownload },
     { name: 'Close Tab', shortcut: '', action: handleCloseActiveTab },
     { name: 'Toggle Sidebar', shortcut: '⌘ \\', action: toggleSidebar },
-    { name: 'Find & Replace', shortcut: '⌘ F', action: () => setSearchOpen(prev => !prev) },
-    { name: 'Markdown Preview', shortcut: '⌘ ⇧ M', action: () => setMdPreviewOpen(prev => !prev) },
+    { name: 'Find & Replace', shortcut: '⌘ F', action: handleToggleSearch },
+    { name: 'Markdown Preview', shortcut: '⌘ ⇧ M', action: handleToggleMdPreview },
     { name: 'Insert Date Header', shortcut: '⌘ ⇧ H', action: handleInsertHeader },
     { name: 'Toggle Bookmark', shortcut: '⌘ ⇧ B', action: handleToggleBookmark },
     { name: 'Next Bookmark', shortcut: '', action: handleNextBookmark },
-    { name: 'Font Size +', shortcut: '⌘ +', action: () => changeFontSize(1) },
-    { name: 'Font Size -', shortcut: '⌘ -', action: () => changeFontSize(-1) },
+    { name: 'Font Size +', shortcut: '⌘ +', action: handleFontSizeUp },
+    { name: 'Font Size -', shortcut: '⌘ -', action: handleFontSizeDown },
     { name: 'Toggle Theme', shortcut: '', action: toggleTheme },
     { name: 'Save', shortcut: '⌘ S', action: flushSave },
     { name: 'Voice → New Document', shortcut: '', action: handleVoiceNewDoc },
-    { name: 'AI Assistant', shortcut: '⌘ /', action: () => setAiPanelOpen(prev => !prev) },
+    { name: 'AI Assistant', shortcut: '⌘ /', action: handleToggleAiPanel },
     { name: 'Reload Documents', shortcut: '', action: refetch },
-  ];
+  ], [handleCreateDocument, handleOpenFile, handleDownload, handleCloseActiveTab, toggleSidebar, handleToggleSearch, handleToggleMdPreview, handleInsertHeader, handleToggleBookmark, handleNextBookmark, handleFontSizeUp, handleFontSizeDown, toggleTheme, flushSave, handleVoiceNewDoc, handleToggleAiPanel, refetch]);
 
   if (isLoading) {
     return (
@@ -316,7 +372,7 @@ export default function Editor() {
       <div className="mobile-toolbar">
         <button className="mobile-toolbar-btn" onClick={toggleSidebar}>Files</button>
         <button className="mobile-toolbar-btn" onClick={handleInsertHeader}>+ Header</button>
-        <button className="mobile-toolbar-btn" onClick={() => setAiPanelOpen(prev => !prev)}>AI</button>
+        <button className="mobile-toolbar-btn" onClick={handleToggleAiPanel}>AI</button>
         <button className="mobile-toolbar-btn" onClick={handleCreateDocument}>+ New</button>
         <button className="mobile-toolbar-btn" onClick={handleVoiceNewDoc}>Voice</button>
         <button className="mobile-toolbar-btn" onClick={flushSave}>Save</button>
@@ -326,7 +382,7 @@ export default function Editor() {
         {/* Sidebar overlay for mobile */}
         <div
           className={`sidebar-overlay${!sidebarCollapsed ? ' visible' : ''}`}
-          onClick={() => setSidebarCollapsed(true)}
+          onClick={handleSidebarOverlayClick}
         />
         <Sidebar
           documents={documents}
@@ -344,7 +400,7 @@ export default function Editor() {
             documents={documents}
             openTabs={openTabs}
             activeDocId={activeDocId}
-            onActivateTab={(id) => setActiveDocId(id)}
+            onActivateTab={setActiveDocId}
             onCloseTab={closeTab}
           />
 
@@ -352,22 +408,22 @@ export default function Editor() {
             <>
               {/* Editor Toolbar */}
               <div className="editor-toolbar">
-                <button className="toolbar-btn" onClick={() => setSearchOpen(prev => !prev)} title="検索・置換 (⌘F)">🔍</button>
+                <button className="toolbar-btn" onClick={handleToggleSearch} title="検索・置換 (⌘F)">🔍</button>
                 <button className="toolbar-btn" onClick={handleDownload} title="ダウンロード (⌘⇧S)">💾</button>
-                <button className="toolbar-btn" onClick={() => setMdPreviewOpen(prev => !prev)} title="MDプレビュー (⌘⇧M)" disabled={activeDoc.language !== 'md'}>📖</button>
+                <button className="toolbar-btn" onClick={handleToggleMdPreview} title="MDプレビュー (⌘⇧M)" disabled={activeDoc.language !== 'md'}>📖</button>
                 <button className="toolbar-btn" onClick={handleToggleBookmark} title="ブックマーク (⌘⇧B)">🔖</button>
                 <button className="toolbar-btn" onClick={handleNextBookmark} title="次のブックマーク" disabled={bookmarks.size === 0}>⏭</button>
                 <button className="toolbar-btn" onClick={handleInsertHeader} title="日付ヘッダー (⌘⇧L)">📅</button>
                 <div className="toolbar-separator" />
-                <button className="toolbar-btn" onClick={() => changeFontSize(-1)} title="フォント縮小 (⌘-)">A-</button>
-                <button className="toolbar-btn" onClick={() => changeFontSize(1)} title="フォント拡大 (⌘+)">A+</button>
+                <button className="toolbar-btn" onClick={handleFontSizeDown} title="フォント縮小 (⌘-)">A-</button>
+                <button className="toolbar-btn" onClick={handleFontSizeUp} title="フォント拡大 (⌘+)">A+</button>
                 <div className="toolbar-separator" />
-                <button className="toolbar-btn" onClick={() => setAiPanelOpen(prev => !prev)} title="AI Assistant (⌘/)">🤖</button>
+                <button className="toolbar-btn" onClick={handleToggleAiPanel} title="AI Assistant (⌘/)">🤖</button>
               </div>
 
               <SearchBar
                 visible={searchOpen}
-                onClose={() => setSearchOpen(false)}
+                onClose={handleCloseSearch}
                 content={activeDoc.content}
                 onChange={handleContentChange}
                 textareaRef={editorTextareaRef}
@@ -380,7 +436,7 @@ export default function Editor() {
                   onCursorChange={handleCursorChange}
                   onListeningChange={handleListeningChange}
                   cursorInsertPos={cursorInsertPos}
-                  onCursorInsertDone={() => setCursorInsertPos(null)}
+                  onCursorInsertDone={handleCursorInsertDone}
                   fontSize={fontSize}
                   textareaRef={editorTextareaRef}
                   bookmarks={bookmarks}
@@ -388,7 +444,7 @@ export default function Editor() {
                 <MarkdownPreview
                   content={activeDoc.content}
                   visible={mdPreviewOpen && activeDoc.language === 'md'}
-                  onClose={() => setMdPreviewOpen(false)}
+                  onClose={handleCloseMdPreview}
                 />
               </div>
             </>
@@ -421,7 +477,7 @@ export default function Editor() {
 
       <AiPanel
         visible={aiPanelOpen}
-        onClose={() => setAiPanelOpen(false)}
+        onClose={handleCloseAiPanel}
       />
 
       <StatusBar
@@ -438,7 +494,7 @@ export default function Editor() {
 
       <CommandPalette
         visible={commandPaletteOpen}
-        onClose={() => setCommandPaletteOpen(false)}
+        onClose={handleCloseCommandPalette}
         commands={commands}
       />
 
@@ -453,14 +509,8 @@ export default function Editor() {
 
       <VoiceNewDoc
         visible={voiceNewDocMode}
-        onClose={() => setVoiceNewDocMode(false)}
-        onComplete={async (text) => {
-          const timestamp = new Date().toLocaleString('ja-JP');
-          const doc = await createDocument(`voice-${Date.now()}.md`);
-          if (doc) {
-            updateContent(doc.id, `# Voice Note - ${timestamp}\n\n${text}\n`);
-          }
-        }}
+        onClose={handleCloseVoiceNewDoc}
+        onComplete={handleVoiceNewDocComplete}
       />
     </div>
   );

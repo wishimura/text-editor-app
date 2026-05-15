@@ -1,4 +1,4 @@
-const CACHE_NAME = 'citrus-editor-v2';
+const CACHE_NAME = 'citrus-editor-v3';
 const APP_ORIGIN = self.location.origin;
 
 self.addEventListener('install', (event) => {

@@ -1,16 +1,13 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { langMap } from '@/lib/types';
 import { SaveStatus } from '@/lib/useDocuments';
 
 interface StatusBarProps {
-  line: number;
-  col: number;
   language: string;
   saveStatus: SaveStatus;
   isListening?: boolean;
-  charCount?: number;
   fontSize?: number;
   onToggleTheme?: () => void;
   theme?: string;
@@ -23,7 +20,16 @@ const saveLabels: Record<SaveStatus, string> = {
   error: 'Save failed',
 };
 
-function StatusBarInner({ line, col, language, saveStatus, isListening, charCount, fontSize, onToggleTheme, theme }: StatusBarProps) {
+function StatusBarInner({ language, saveStatus, isListening, fontSize, onToggleTheme, theme }: StatusBarProps) {
+  const saveRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (saveRef.current) {
+      saveRef.current.textContent = saveLabels[saveStatus];
+      saveRef.current.style.display = saveStatus === 'idle' ? 'none' : '';
+    }
+  }, [saveStatus]);
+
   return (
     <div className="status-bar">
       <div className="status-left">
@@ -33,15 +39,13 @@ function StatusBarInner({ line, col, language, saveStatus, isListening, charCoun
             Recording...
           </span>
         )}
-        {saveStatus !== 'idle' && (
-          <span className="status-item save-status">{saveLabels[saveStatus]}</span>
-        )}
-        {charCount !== undefined && (
-          <span className="status-item">{charCount.toLocaleString()} chars</span>
-        )}
+        <span ref={saveRef} className="status-item save-status" style={{ display: saveStatus === 'idle' ? 'none' : undefined }}>
+          {saveLabels[saveStatus]}
+        </span>
+        <span id="status-charcount" className="status-item">0 chars</span>
       </div>
       <div className="status-right">
-        <span className="status-item">Ln {line}, Col {col}</span>
+        <span id="status-cursor" className="status-item">Ln 1, Col 1</span>
         {fontSize && (
           <span className="status-item">{fontSize}px</span>
         )}

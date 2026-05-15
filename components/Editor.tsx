@@ -39,13 +39,10 @@ export default function Editor() {
   });
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const cursorPosRef = useRef({ line: 1, col: 1 });
-  const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
-  const cursorRaf = useRef(0);
   const [isListening, setIsListening] = useState(false);
   const [voiceNewDocMode, setVoiceNewDocMode] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [charCount, setCharCount] = useState(0);
   const [mdPreviewOpen, setMdPreviewOpen] = useState(false);
   const [cursorInsertPos, setCursorInsertPos] = useState<number | null>(null);
   const [bookmarks, setBookmarks] = useState<Set<number>>(new Set());
@@ -117,22 +114,18 @@ export default function Editor() {
     }
   }, [deleteDocument]);
 
-  const cursorTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const handleCursorChange = useCallback((line: number, col: number) => {
     cursorPosRef.current = { line, col };
-    clearTimeout(cursorTimer.current);
-    cursorTimer.current = setTimeout(() => {
-      setCursorPos({ line, col });
-    }, 150);
+    const el = document.getElementById('status-cursor');
+    if (el) el.textContent = `Ln ${line}, Col ${col}`;
   }, []);
 
-  const charCountTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const handleContentChange = useCallback((content: string) => {
     if (activeDocId) {
       updateContent(activeDocId, content);
     }
-    clearTimeout(charCountTimer.current);
-    charCountTimer.current = setTimeout(() => setCharCount(content.length), 300);
+    const el = document.getElementById('status-charcount');
+    if (el) el.textContent = `${content.length.toLocaleString()} chars`;
   }, [activeDocId, updateContent]);
 
   const handleListeningChange = useCallback((listening: boolean) => {
@@ -481,12 +474,9 @@ export default function Editor() {
       />
 
       <StatusBar
-        line={cursorPos.line}
-        col={cursorPos.col}
         language={activeDoc?.language || 'plaintext'}
         saveStatus={saveStatus}
         isListening={isListening}
-        charCount={charCount}
         fontSize={fontSize}
         onToggleTheme={toggleTheme}
         theme={theme}

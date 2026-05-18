@@ -23,10 +23,11 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef = externalRef || internalRef;
   const lineNumbersRef = useRef<HTMLDivElement>(null);
+  const activeHighlightRef = useRef<HTMLDivElement>(null);
   const cursorPosRef = useRef(0);
   const cursorLineRef = useRef(1);
-  const prevActiveLineEl = useRef<Element | null>(null);
   const initialScrollDone = useRef(false);
+  const pendingOnChangeRef = useRef(0);
 
   const {
     isSupported,
@@ -74,16 +75,11 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
   const lineHeight = fontSize * 1.6;
 
   const highlightActiveLine = useCallback((line: number) => {
-    if (prevActiveLineEl.current) {
-      prevActiveLineEl.current.classList.remove('active');
+    const el = activeHighlightRef.current;
+    if (el) {
+      el.style.top = `${(line - 1) * lineHeight}px`;
     }
-    const container = lineNumbersRef.current;
-    if (container && line >= 1 && line <= container.children.length) {
-      const el = container.children[line - 1];
-      el.classList.add('active');
-      prevActiveLineEl.current = el;
-    }
-  }, []);
+  }, [lineHeight]);
 
   const updateCursor = useCallback(() => {
     const ta = textareaRef.current;
@@ -144,7 +140,6 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
     }
   }, [onChange]);
 
-  // Sync textarea value when content changes externally (header insert, voice, doc switch)
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -158,7 +153,6 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
     }
   }, [content]);
 
-  // Scroll to bottom on initial mount
   useEffect(() => {
     if (!initialScrollDone.current && textareaRef.current && content) {
       initialScrollDone.current = true;
@@ -175,7 +169,6 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
     }
   }, [content, updateCursor]);
 
-  // Handle cursor positioning from parent
   useEffect(() => {
     if (cursorInsertPos != null && textareaRef.current) {
       const ta = textareaRef.current;
@@ -189,41 +182,40 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
     }
   }, [cursorInsertPos, onCursorInsertDone, updateCursor]);
 
-  // Line numbers: NO dependency on cursorLine (active highlight is via DOM)
-  const lineNumbers = useMemo(() => {
-    const nums = [];
+  // Single text node for all line numbers instead of N individual spans
+  const lineNumberText = useMemo(() => {
+    const lines: string[] = [];
     for (let i = 1; i <= Math.max(lineCount, 1); i++) {
-      const hasBookmark = bookmarks?.has(i);
-      nums.push(
-        <span
-          key={i}
-          className={`line-num${hasBookmark ? ' bookmarked' : ''}`}
-          style={{ height: lineHeight }}
-        >
-          {hasBookmark ? '●' : i}
-        </span>
-      );
+      lines.push(bookmarks?.has(i) ? '●' : String(i));
     }
-    return nums;
-  }, [lineCount, bookmarks, lineHeight]);
+    return lines.join('\n');
+  }, [lineCount, bookmarks]);
 
-  // Re-highlight after line numbers rebuild
+  // Position highlight on mount/rebuild
   useEffect(() => {
-    prevActiveLineEl.current = null;
     highlightActiveLine(cursorLineRef.current);
-  }, [lineNumbers, highlightActiveLine]);
+  }, [lineNumberText, highlightActiveLine]);
 
+  // Throttle onChange to once per animation frame
   const handleInput = useCallback(() => {
     const ta = textareaRef.current;
     if (!ta) return;
-    onChange(ta.value);
-    requestAnimationFrame(updateCursor);
+    cancelAnimationFrame(pendingOnChangeRef.current);
+    pendingOnChangeRef.current = requestAnimationFrame(() => {
+      onChange(ta.value);
+      updateCursor();
+    });
   }, [onChange, updateCursor]);
 
   return (
     <div className="editor-wrapper">
       <div className="line-numbers" ref={lineNumbersRef} style={{ fontSize, lineHeight: 1.6 }}>
-        {lineNumbers}
+        <div
+          ref={activeHighlightRef}
+          className="line-highlight"
+          style={{ height: lineHeight }}
+        />
+        <pre className="line-num-pre">{lineNumberText}</pre>
       </div>
       <textarea
         ref={textareaRef}

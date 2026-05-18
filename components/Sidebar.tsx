@@ -5,22 +5,30 @@ import { Document, getFileIcon } from '@/lib/types';
 
 interface SidebarProps {
   documents: Document[];
+  trash: Document[];
   activeDocId: string | null;
   collapsed: boolean;
   onOpenDocument: (id: string) => void;
   onCreateDocument: () => void;
   onDeleteDocument: (id: string) => void;
+  onRestoreDocument: (id: string) => void;
+  onPermanentlyDelete: (id: string) => void;
+  onEmptyTrash: () => void;
   onRenameDocument?: (id: string, name: string) => void;
   onMoveToFolder?: (id: string, folder: string) => void;
 }
 
 function SidebarInner({
   documents,
+  trash,
   activeDocId,
   collapsed,
   onOpenDocument,
   onCreateDocument,
   onDeleteDocument,
+  onRestoreDocument,
+  onPermanentlyDelete,
+  onEmptyTrash,
   onRenameDocument,
   onMoveToFolder,
 }: SidebarProps) {
@@ -29,8 +37,8 @@ function SidebarInner({
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const [contextMenuDoc, setContextMenuDoc] = useState<string | null>(null);
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
+  const [trashOpen, setTrashOpen] = useState(false);
 
-  // Known folders (persisted in localStorage so empty folders survive)
   const [knownFolders, setKnownFolders] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       return JSON.parse(localStorage.getItem('citrus_folders') || '[]');
@@ -42,7 +50,6 @@ function SidebarInner({
     localStorage.setItem('citrus_folders', JSON.stringify(knownFolders));
   }, [knownFolders]);
 
-  // Close context menu on click outside
   useEffect(() => {
     if (!contextMenuDoc) return;
     const close = () => setContextMenuDoc(null);
@@ -90,14 +97,12 @@ function SidebarInner({
 
   const handleDeleteFolder = useCallback((folder: string) => {
     if (!confirm(`フォルダ「${folder}」を削除しますか？（中のファイルはルートに移動します）`)) return;
-    // Move all docs out of folder
     documents.filter(d => d.folder === folder).forEach(doc => {
       if (onMoveToFolder) onMoveToFolder(doc.id, '');
     });
     setKnownFolders(prev => prev.filter(f => f !== folder));
   }, [documents, onMoveToFolder]);
 
-  // Group docs by folder
   const folders = new Map<string, Document[]>();
   const rootDocs: Document[] = [];
   documents.forEach(doc => {
@@ -110,12 +115,10 @@ function SidebarInner({
     }
   });
 
-  // Add known empty folders
   knownFolders.forEach(f => {
     if (!folders.has(f)) folders.set(f, []);
   });
 
-  // All folder names for the move menu
   const allFolderNames = Array.from(folders.keys());
 
   const renderDoc = (doc: Document) => {
@@ -182,7 +185,6 @@ function SidebarInner({
         </div>
       </div>
       <div className="file-tree">
-        {/* Folders */}
         {Array.from(folders.entries()).map(([folder, docs]) => {
           const isCollapsed = collapsedFolders.has(folder);
           return (
@@ -206,7 +208,6 @@ function SidebarInner({
             </div>
           );
         })}
-        {/* Root documents */}
         {rootDocs.map(renderDoc)}
         {documents.length === 0 && (
           <div style={{ padding: '8px 16px', color: 'var(--text-muted)', fontSize: '12px' }}>
@@ -215,7 +216,73 @@ function SidebarInner({
         )}
       </div>
 
-      {/* Context menu for moving to folder */}
+      {/* Trash section */}
+      <div className="trash-section">
+        <div className="trash-header" onClick={() => setTrashOpen(prev => !prev)}>
+          <span className="folder-arrow">{trashOpen ? '▾' : '▸'}</span>
+          <span className="trash-icon">🗑</span>
+          <span className="trash-title">ゴミ箱{trash.length > 0 ? ` (${trash.length})` : ''}</span>
+          {trash.length > 0 && trashOpen && (
+            <button
+              className="delete-btn trash-empty-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm('ゴミ箱を空にしますか？この操作は元に戻せません。')) {
+                  onEmptyTrash();
+                }
+              }}
+              title="ゴミ箱を空にする"
+            >
+              空にする
+            </button>
+          )}
+        </div>
+        {trashOpen && (
+          <div className="trash-list">
+            {trash.length === 0 && (
+              <div style={{ padding: '8px 16px', color: 'var(--text-muted)', fontSize: '12px' }}>
+                ゴミ箱は空です
+              </div>
+            )}
+            {trash.map(doc => {
+              const icon = getFileIcon(doc.language);
+              const deletedDate = doc.deleted_at
+                ? new Date(doc.deleted_at).toLocaleDateString('ja-JP')
+                : '';
+              return (
+                <div key={doc.id} className="tree-item trash-item">
+                  <span className={`icon ${icon.cls}`} style={{ opacity: 0.5 }}>{icon.icon}</span>
+                  <span className="name trash-name">{doc.title}</span>
+                  <span className="trash-date">{deletedDate}</span>
+                  <button
+                    className="trash-action-btn restore-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRestoreDocument(doc.id);
+                    }}
+                    title="復元"
+                  >
+                    ↩
+                  </button>
+                  <button
+                    className="trash-action-btn perm-delete-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`「${doc.title}」を完全に削除しますか？`)) {
+                        onPermanentlyDelete(doc.id);
+                      }
+                    }}
+                    title="完全に削除"
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {contextMenuDoc && (
         <div
           className="context-menu"

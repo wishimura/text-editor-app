@@ -8,6 +8,7 @@ export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 export function useDocuments() {
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [trash, setTrash] = useState<Document[]>([]);
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,6 +22,7 @@ export function useDocuments() {
     const { data, error } = await getSupabase()
       .from('documents')
       .select('*')
+      .is('deleted_at', null)
       .order('updated_at', { ascending: false });
 
     if (!error && data) {
@@ -40,9 +42,22 @@ export function useDocuments() {
     setIsLoading(false);
   }, []);
 
+  const fetchTrash = useCallback(async () => {
+    const { data, error } = await getSupabase()
+      .from('documents')
+      .select('*')
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false });
+
+    if (!error && data) {
+      setTrash(data);
+    }
+  }, []);
+
   useEffect(() => {
     fetchDocuments();
-  }, [fetchDocuments]);
+    fetchTrash();
+  }, [fetchDocuments, fetchTrash]);
 
   useEffect(() => {
     if (activeDocId) {
@@ -89,13 +104,57 @@ export function useDocuments() {
   }, [openDocument]);
 
   const deleteDocument = useCallback(async (id: string) => {
-    const { error } = await getSupabase().from('documents').delete().eq('id', id);
+    const now = new Date().toISOString();
+    const { error } = await getSupabase()
+      .from('documents')
+      .update({ deleted_at: now })
+      .eq('id', id);
     if (!error) {
+      const doc = documents.find(d => d.id === id);
       setDocuments(prev => prev.filter(d => d.id !== id));
+      if (doc) {
+        setTrash(prev => [{ ...doc, deleted_at: now }, ...prev]);
+      }
       closeTab(id);
       localContentRef.current.delete(id);
     }
-  }, [closeTab]);
+  }, [closeTab, documents]);
+
+  const restoreDocument = useCallback(async (id: string) => {
+    const { error } = await getSupabase()
+      .from('documents')
+      .update({ deleted_at: null, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (!error) {
+      const doc = trash.find(d => d.id === id);
+      setTrash(prev => prev.filter(d => d.id !== id));
+      if (doc) {
+        setDocuments(prev => [{ ...doc, deleted_at: null }, ...prev]);
+      }
+    }
+  }, [trash]);
+
+  const permanentlyDelete = useCallback(async (id: string) => {
+    const { error } = await getSupabase()
+      .from('documents')
+      .delete()
+      .eq('id', id);
+    if (!error) {
+      setTrash(prev => prev.filter(d => d.id !== id));
+    }
+  }, []);
+
+  const emptyTrash = useCallback(async () => {
+    const ids = trash.map(d => d.id);
+    if (ids.length === 0) return;
+    const { error } = await getSupabase()
+      .from('documents')
+      .delete()
+      .in('id', ids);
+    if (!error) {
+      setTrash([]);
+    }
+  }, [trash]);
 
   const saveStatusRef = useRef<SaveStatus>('idle');
   const updateContent = useCallback((id: string, content: string) => {
@@ -170,6 +229,7 @@ export function useDocuments() {
 
   return {
     documents,
+    trash,
     openTabs,
     activeDocId,
     activeDoc,
@@ -180,6 +240,9 @@ export function useDocuments() {
     setActiveDocId,
     createDocument,
     deleteDocument,
+    restoreDocument,
+    permanentlyDelete,
+    emptyTrash,
     updateContent,
     flushSave,
     refetch: fetchDocuments,

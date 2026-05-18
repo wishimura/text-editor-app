@@ -16,6 +16,7 @@ import MarkdownPreview from './MarkdownPreview';
 export default function Editor() {
   const {
     documents,
+    trash,
     openTabs,
     activeDocId,
     activeDoc,
@@ -26,6 +27,9 @@ export default function Editor() {
     setActiveDocId,
     createDocument,
     deleteDocument,
+    restoreDocument,
+    permanentlyDelete,
+    emptyTrash,
     updateContent,
     flushSave,
     refetch,
@@ -109,9 +113,7 @@ export default function Editor() {
   }, [createDocument, updateContent]);
 
   const handleDeleteDocument = useCallback((id: string) => {
-    if (confirm('Delete this file?')) {
-      deleteDocument(id);
-    }
+    deleteDocument(id);
   }, [deleteDocument]);
 
   const handleCursorChange = useCallback((line: number, col: number) => {
@@ -379,11 +381,15 @@ export default function Editor() {
         />
         <Sidebar
           documents={documents}
+          trash={trash}
           activeDocId={activeDocId}
           collapsed={sidebarCollapsed}
           onOpenDocument={openDocument}
           onCreateDocument={handleCreateDocument}
           onDeleteDocument={handleDeleteDocument}
+          onRestoreDocument={restoreDocument}
+          onPermanentlyDelete={permanentlyDelete}
+          onEmptyTrash={emptyTrash}
           onRenameDocument={renameDocument}
           onMoveToFolder={updateFolder}
         />

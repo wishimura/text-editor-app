@@ -4,6 +4,7 @@ export interface Document {
   content: string;
   language: string;
   folder?: string;
+  deleted_at?: string | null;
   created_at: string;
   updated_at: string;
 }

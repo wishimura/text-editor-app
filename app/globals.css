@@ -1820,6 +1820,101 @@ html, body {
 }
 
 /* ========================================
+   Trash / Recycle Bin
+   ======================================== */
+
+.trash-section {
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+
+.trash-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.trash-header:hover {
+  background: var(--bg-hover);
+}
+
+.trash-icon {
+  font-size: 13px;
+}
+
+.trash-title {
+  font-weight: 600;
+  font-size: 12px;
+  flex: 1;
+}
+
+.trash-empty-btn {
+  font-size: 10px !important;
+  opacity: 0.6;
+  padding: 2px 6px !important;
+  width: auto !important;
+}
+
+.trash-empty-btn:hover {
+  opacity: 1;
+  color: var(--red, #e06c75) !important;
+}
+
+.trash-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.trash-item {
+  opacity: 0.6;
+  padding-right: 4px !important;
+}
+
+.trash-item:hover {
+  opacity: 1;
+}
+
+.trash-name {
+  text-decoration: line-through;
+}
+
+.trash-date {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.trash-action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 3px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.tree-item:hover .trash-action-btn {
+  opacity: 1;
+}
+
+.restore-btn:hover {
+  color: var(--green, #98c379);
+}
+
+.perm-delete-btn:hover {
+  color: var(--red, #e06c75);
+}
+
+/* ========================================
    Status Bar Clickable
    ======================================== */
 

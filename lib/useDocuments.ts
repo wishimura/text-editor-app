@@ -19,12 +19,21 @@ export function useDocuments() {
 
   const fetchDocuments = useCallback(async () => {
     setIsLoading(true);
-    const { data, error } = await getSupabase()
+    // Try with deleted_at filter first; fall back to unfiltered if column doesn't exist yet
+    let result = await getSupabase()
       .from('documents')
       .select('*')
       .is('deleted_at', null)
       .order('updated_at', { ascending: false });
 
+    if (result.error) {
+      result = await getSupabase()
+        .from('documents')
+        .select('*')
+        .order('updated_at', { ascending: false });
+    }
+
+    const { data, error } = result;
     if (!error && data) {
       setDocuments(data);
       data.forEach(doc => localContentRef.current.set(doc.id, doc.content));
@@ -109,15 +118,18 @@ export function useDocuments() {
       .from('documents')
       .update({ deleted_at: now })
       .eq('id', id);
-    if (!error) {
-      const doc = documents.find(d => d.id === id);
-      setDocuments(prev => prev.filter(d => d.id !== id));
-      if (doc) {
-        setTrash(prev => [{ ...doc, deleted_at: now }, ...prev]);
-      }
-      closeTab(id);
-      localContentRef.current.delete(id);
+    if (error) {
+      // deleted_at column may not exist yet — skip silently
+      // (file stays in list, user can retry after migration)
+      return;
     }
+    const doc = documents.find(d => d.id === id);
+    setDocuments(prev => prev.filter(d => d.id !== id));
+    if (doc) {
+      setTrash(prev => [{ ...doc, deleted_at: now }, ...prev]);
+    }
+    closeTab(id);
+    localContentRef.current.delete(id);
   }, [closeTab, documents]);
 
   const restoreDocument = useCallback(async (id: string) => {

@@ -557,6 +557,25 @@ html, body {
   color: var(--text-muted);
 }
 
+/* IME proxy textarea — hidden, only visible during composition */
+.ime-proxy {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  width: 300px;
+  height: 1.6em;
+  padding: 0 2px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  opacity: 0.95;
+}
+
 .editor-textarea::-webkit-scrollbar {
   width: 10px;
   height: 10px;

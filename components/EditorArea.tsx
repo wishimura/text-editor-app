@@ -22,6 +22,7 @@ const bracketPairs: Record<string, string> = {
 function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange, cursorInsertPos, onCursorInsertDone, fontSize = 14, textareaRef: externalRef, bookmarks }: EditorAreaProps) {
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef = externalRef || internalRef;
+  const imeInputRef = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const activeHighlightRef = useRef<HTMLDivElement>(null);
   const cursorPosRef = useRef(0);
@@ -198,26 +199,65 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
     highlightActiveLine(cursorLineRef.current);
   }, [lineNumberText, highlightActiveLine]);
 
-  // Skip ALL processing during IME composition
+  // --- IME proxy: use a tiny hidden textarea for composition ---
+  // Chrome's textarea is slow with IME on large content because it
+  // re-layouts the entire document during composition. The proxy
+  // textarea only has a few characters so composition is instant.
+
+  const positionImeProxy = useCallback(() => {
+    const ta = textareaRef.current;
+    const ime = imeInputRef.current;
+    if (!ta || !ime) return;
+    const taRect = ta.getBoundingClientRect();
+    const lineHeightPx = parseFloat(getComputedStyle(ta).lineHeight) || lineHeight;
+    const line = cursorLineRef.current;
+    const scrollTop = ta.scrollTop;
+    const top = taRect.top + (line - 1) * lineHeightPx - scrollTop + parseFloat(getComputedStyle(ta).paddingTop);
+    ime.style.top = `${Math.max(taRect.top, Math.min(top, taRect.bottom - 20))}px`;
+    ime.style.left = `${taRect.left + 60}px`;
+    ime.style.fontSize = `${fontSize}px`;
+    ime.style.lineHeight = '1.6';
+    ime.style.fontFamily = getComputedStyle(ta).fontFamily;
+  }, [fontSize, lineHeight]);
+
   const handleCompositionStart = useCallback(() => {
     isComposingRef.current = true;
-  }, []);
+    const ime = imeInputRef.current;
+    if (ime) {
+      positionImeProxy();
+      ime.value = '';
+      ime.style.display = 'block';
+      ime.focus();
+    }
+  }, [positionImeProxy]);
 
-  const handleCompositionEnd = useCallback(() => {
+  const handleImeCompositionEnd = useCallback(() => {
     isComposingRef.current = false;
     const ta = textareaRef.current;
-    if (!ta) return;
-    // Process once after composition finishes
-    cancelAnimationFrame(pendingRafRef.current);
-    pendingRafRef.current = requestAnimationFrame(() => {
-      computeCursor(ta);
-    });
-    clearTimeout(pendingSaveRef.current);
-    onChange(ta.value);
+    const ime = imeInputRef.current;
+    if (!ta || !ime) return;
+
+    const composed = ime.value;
+    ime.style.display = 'none';
+    ime.value = '';
+
+    if (composed) {
+      const pos = cursorPosRef.current;
+      const val = ta.value;
+      const newVal = val.substring(0, pos) + composed + val.substring(pos);
+      ta.value = newVal;
+      const newPos = pos + composed.length;
+      ta.selectionStart = ta.selectionEnd = newPos;
+      cursorPosRef.current = newPos;
+      ta.focus();
+      onChange(newVal);
+      requestAnimationFrame(() => computeCursor(ta));
+    } else {
+      ta.focus();
+    }
   }, [onChange, computeCursor]);
 
   const handleInput = useCallback(() => {
-    // During IME composition, let the browser handle everything natively
     if (isComposingRef.current) return;
     const ta = textareaRef.current;
     if (!ta) return;
@@ -254,7 +294,6 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
         defaultValue={content}
         onInput={handleInput}
         onCompositionStart={handleCompositionStart}
-        onCompositionEnd={handleCompositionEnd}
         onScroll={syncScroll}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
@@ -265,6 +304,16 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
         wrap="off"
         placeholder="Start typing..."
         style={{ fontSize, lineHeight: 1.6 }}
+      />
+
+      {/* Hidden IME proxy textarea — only visible during composition */}
+      <textarea
+        ref={imeInputRef}
+        className="ime-proxy"
+        onCompositionEnd={handleImeCompositionEnd}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
       />
 
       {isListening && interimTranscript && (

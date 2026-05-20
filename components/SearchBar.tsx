@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, CompositionEvent } from 'react';
 
 interface SearchBarProps {
   visible: boolean;
@@ -17,6 +17,21 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
   const [matchIndex, setMatchIndex] = useState(0);
   const [matches, setMatches] = useState<number[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
+  const isComposingRef = useRef(false);
+
+  const handleCompositionStart = useCallback(() => {
+    isComposingRef.current = true;
+  }, []);
+
+  const handleSearchCompositionEnd = useCallback((e: CompositionEvent<HTMLInputElement>) => {
+    isComposingRef.current = false;
+    setQuery(e.currentTarget.value);
+  }, []);
+
+  const handleReplaceCompositionEnd = useCallback((e: CompositionEvent<HTMLInputElement>) => {
+    isComposingRef.current = false;
+    setReplace(e.currentTarget.value);
+  }, []);
 
   const getContent = useCallback(() => {
     return textareaRef.current?.value ?? content;
@@ -137,8 +152,10 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
           type="text"
           placeholder="Search..."
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => { if (!isComposingRef.current) setQuery(e.target.value); }}
           onKeyDown={handleKeyDown}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleSearchCompositionEnd}
         />
         <span className="search-count">
           {matches.length > 0 ? `${matchIndex + 1}/${matches.length}` : 'No results'}
@@ -157,8 +174,10 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
             type="text"
             placeholder="Replace..."
             value={replace}
-            onChange={(e) => setReplace(e.target.value)}
+            onChange={(e) => { if (!isComposingRef.current) setReplace(e.target.value); }}
             onKeyDown={handleKeyDown}
+            onCompositionStart={handleCompositionStart}
+            onCompositionEnd={handleReplaceCompositionEnd}
           />
           <button className="search-btn" onClick={handleReplace} title="Replace">Replace</button>
           <button className="search-btn" onClick={handleReplaceAll} title="Replace All">All</button>

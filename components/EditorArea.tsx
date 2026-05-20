@@ -29,6 +29,7 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
   const initialScrollDone = useRef(false);
   const pendingRafRef = useRef(0);
   const pendingSaveRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const isComposingRef = useRef(false);
 
   const {
     isSupported,
@@ -82,7 +83,6 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
     }
   }, [lineHeight]);
 
-  // Efficient cursor calc: count newlines without substring/split allocation
   const computeCursor = useCallback((ta: HTMLTextAreaElement) => {
     const pos = ta.selectionStart;
     cursorPosRef.current = pos;
@@ -106,7 +106,7 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
 
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
     const ta = textareaRef.current;
-    if (!ta) return;
+    if (!ta || e.nativeEvent.isComposing) return;
 
     if (e.key === 'Tab') {
       e.preventDefault();
@@ -198,25 +198,41 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
     highlightActiveLine(cursorLineRef.current);
   }, [lineNumberText, highlightActiveLine]);
 
-  // Core input handler: rAF for cursor, debounced onChange (300ms)
+  // Skip ALL processing during IME composition
+  const handleCompositionStart = useCallback(() => {
+    isComposingRef.current = true;
+  }, []);
+
+  const handleCompositionEnd = useCallback(() => {
+    isComposingRef.current = false;
+    const ta = textareaRef.current;
+    if (!ta) return;
+    // Process once after composition finishes
+    cancelAnimationFrame(pendingRafRef.current);
+    pendingRafRef.current = requestAnimationFrame(() => {
+      computeCursor(ta);
+    });
+    clearTimeout(pendingSaveRef.current);
+    onChange(ta.value);
+  }, [onChange, computeCursor]);
+
   const handleInput = useCallback(() => {
+    // During IME composition, let the browser handle everything natively
+    if (isComposingRef.current) return;
     const ta = textareaRef.current;
     if (!ta) return;
 
-    // Cursor update via rAF — lightweight, once per frame
     cancelAnimationFrame(pendingRafRef.current);
     pendingRafRef.current = requestAnimationFrame(() => {
       computeCursor(ta);
     });
 
-    // Debounce content sync to reduce ta.value reads on large documents
     clearTimeout(pendingSaveRef.current);
     pendingSaveRef.current = setTimeout(() => {
       onChange(ta.value);
     }, 300);
   }, [onChange, computeCursor]);
 
-  // Click handler for cursor position (only on click, not during typing)
   const handleClick = useCallback(() => {
     const ta = textareaRef.current;
     if (ta) computeCursor(ta);
@@ -237,6 +253,8 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
         className="editor-textarea"
         defaultValue={content}
         onInput={handleInput}
+        onCompositionStart={handleCompositionStart}
+        onCompositionEnd={handleCompositionEnd}
         onScroll={syncScroll}
         onClick={handleClick}
         onKeyDown={handleKeyDown}

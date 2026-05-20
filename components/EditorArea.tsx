@@ -19,10 +19,12 @@ const bracketPairs: Record<string, string> = {
   '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`',
 };
 
+const VIRTUAL_THRESHOLD = 5000;
+const VIRTUAL_LINE_BUFFER = 150;
+
 function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange, cursorInsertPos, onCursorInsertDone, fontSize = 14, textareaRef: externalRef, bookmarks }: EditorAreaProps) {
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef = externalRef || internalRef;
-  const imeInputRef = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const activeHighlightRef = useRef<HTMLDivElement>(null);
   const cursorPosRef = useRef(0);
@@ -30,7 +32,14 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
   const initialScrollDone = useRef(false);
   const pendingRafRef = useRef(0);
   const pendingSaveRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const isComposingRef = useRef(false);
+
+  // Virtual windowing for large documents
+  const isVirtualRef = useRef(false);
+  const preContentRef = useRef('');
+  const postContentRef = useRef('');
+  const virtualStartLineRef = useRef(0);
+  const virtualTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const savedScrollRef = useRef(0);
 
   const {
     isSupported,
@@ -94,20 +103,109 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
       if (val.charCodeAt(i) === 10) { line++; lastNl = i; }
     }
     const col = pos - lastNl;
-    cursorLineRef.current = line;
-    highlightActiveLine(line);
-    onCursorChange(line, col);
+    // In virtual mode, adjust line number by the offset
+    const displayLine = isVirtualRef.current ? line + virtualStartLineRef.current : line;
+    cursorLineRef.current = displayLine;
+    highlightActiveLine(displayLine);
+    onCursorChange(displayLine, col);
   }, [onCursorChange, highlightActiveLine]);
 
   const syncScroll = useCallback(() => {
+    if (isVirtualRef.current) return;
     if (lineNumbersRef.current && textareaRef.current) {
       lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop;
     }
   }, []);
 
+  // --- Virtual windowing ---
+  const enterVirtualMode = useCallback((ta: HTMLTextAreaElement) => {
+    if (isVirtualRef.current) return;
+    const val = ta.value;
+    const pos = ta.selectionStart;
+    const selEnd = ta.selectionEnd;
+
+    // Find cursor line
+    let curLine = 1;
+    for (let i = 0; i < pos; i++) {
+      if (val.charCodeAt(i) === 10) curLine++;
+    }
+
+    // Calculate line boundaries for the window
+    const lines = val.split('\n');
+    const startLine = Math.max(0, curLine - VIRTUAL_LINE_BUFFER - 1);
+    const endLine = Math.min(lines.length, curLine + VIRTUAL_LINE_BUFFER);
+
+    const preLines = lines.slice(0, startLine);
+    const windowLines = lines.slice(startLine, endLine);
+    const postLines = lines.slice(endLine);
+
+    preContentRef.current = preLines.length > 0 ? preLines.join('\n') + '\n' : '';
+    postContentRef.current = postLines.length > 0 ? '\n' + postLines.join('\n') : '';
+    virtualStartLineRef.current = startLine;
+    savedScrollRef.current = ta.scrollTop;
+    isVirtualRef.current = true;
+
+    const windowText = windowLines.join('\n');
+    const preLen = preContentRef.current.length;
+    ta.value = windowText;
+    ta.selectionStart = Math.max(0, pos - preLen);
+    ta.selectionEnd = Math.max(0, selEnd - preLen);
+
+    // Adjust scroll to maintain visual position
+    ta.scrollTop = Math.max(0, savedScrollRef.current - startLine * lineHeight);
+  }, [lineHeight]);
+
+  const exitVirtualMode = useCallback(() => {
+    const ta = textareaRef.current;
+    if (!ta || !isVirtualRef.current) return;
+
+    const pos = ta.selectionStart;
+    const selEnd = ta.selectionEnd;
+    const windowContent = ta.value;
+    const preLen = preContentRef.current.length;
+    const startLine = virtualStartLineRef.current;
+
+    const fullContent = preContentRef.current + windowContent + postContentRef.current;
+
+    isVirtualRef.current = false;
+    ta.value = fullContent;
+    ta.selectionStart = preLen + pos;
+    ta.selectionEnd = preLen + selEnd;
+    cursorPosRef.current = preLen + pos;
+
+    // Restore scroll
+    ta.scrollTop = ta.scrollTop + startLine * lineHeight;
+    if (lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = ta.scrollTop;
+    }
+
+    preContentRef.current = '';
+    postContentRef.current = '';
+    virtualStartLineRef.current = 0;
+
+    onChange(fullContent);
+    requestAnimationFrame(() => computeCursor(ta));
+  }, [lineHeight, onChange, computeCursor]);
+
+  const resetVirtualTimer = useCallback(() => {
+    clearTimeout(virtualTimerRef.current);
+    virtualTimerRef.current = setTimeout(() => {
+      exitVirtualMode();
+    }, 800);
+  }, [exitVirtualMode]);
+
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
     const ta = textareaRef.current;
-    if (!ta || e.nativeEvent.isComposing) return;
+    if (!ta) return;
+
+    if (e.nativeEvent.isComposing) return;
+
+    // Enter virtual mode for large docs on printable key
+    if (!isVirtualRef.current && ta.value.length > VIRTUAL_THRESHOLD && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+      enterVirtualMode(ta);
+      resetVirtualTimer();
+      // Don't return — let the key be processed on the now-small textarea
+    }
 
     if (e.key === 'Tab') {
       e.preventDefault();
@@ -117,7 +215,7 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
       const newVal = val.substring(0, start) + '  ' + val.substring(end);
       ta.value = newVal;
       ta.selectionStart = ta.selectionEnd = start + 2;
-      onChange(newVal);
+      if (!isVirtualRef.current) onChange(newVal);
       return;
     }
 
@@ -134,20 +232,21 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
         ta.value = newVal;
         ta.selectionStart = start + 1;
         ta.selectionEnd = end + 1;
-        onChange(newVal);
+        if (!isVirtualRef.current) onChange(newVal);
       } else {
         e.preventDefault();
         const newVal = val.substring(0, start) + e.key + bracketPairs[e.key] + val.substring(end);
         ta.value = newVal;
         ta.selectionStart = ta.selectionEnd = start + 1;
-        onChange(newVal);
+        if (!isVirtualRef.current) onChange(newVal);
       }
     }
-  }, [onChange]);
+  }, [onChange, enterVirtualMode, resetVirtualTimer]);
 
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
+    if (isVirtualRef.current) return;
     if (ta.value !== content) {
       const savedStart = ta.selectionStart;
       const savedEnd = ta.selectionEnd;
@@ -199,84 +298,35 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
     highlightActiveLine(cursorLineRef.current);
   }, [lineNumberText, highlightActiveLine]);
 
-  // --- IME proxy: use a tiny hidden textarea for composition ---
-  // Chrome's textarea is slow with IME on large content because it
-  // re-layouts the entire document during composition. The proxy
-  // textarea only has a few characters so composition is instant.
-
-  const positionImeProxy = useCallback(() => {
-    const ta = textareaRef.current;
-    const ime = imeInputRef.current;
-    if (!ta || !ime) return;
-    const taRect = ta.getBoundingClientRect();
-    const lineHeightPx = parseFloat(getComputedStyle(ta).lineHeight) || lineHeight;
-    const line = cursorLineRef.current;
-    const scrollTop = ta.scrollTop;
-    const top = taRect.top + (line - 1) * lineHeightPx - scrollTop + parseFloat(getComputedStyle(ta).paddingTop);
-    ime.style.top = `${Math.max(taRect.top, Math.min(top, taRect.bottom - 20))}px`;
-    ime.style.left = `${taRect.left + 60}px`;
-    ime.style.fontSize = `${fontSize}px`;
-    ime.style.lineHeight = '1.6';
-    ime.style.fontFamily = getComputedStyle(ta).fontFamily;
-  }, [fontSize, lineHeight]);
-
-  const handleCompositionStart = useCallback(() => {
-    isComposingRef.current = true;
-    const ime = imeInputRef.current;
-    if (ime) {
-      positionImeProxy();
-      ime.value = '';
-      ime.style.display = 'block';
-      ime.focus();
-    }
-  }, [positionImeProxy]);
-
-  const handleImeCompositionEnd = useCallback(() => {
-    isComposingRef.current = false;
-    const ta = textareaRef.current;
-    const ime = imeInputRef.current;
-    if (!ta || !ime) return;
-
-    const composed = ime.value;
-    ime.style.display = 'none';
-    ime.value = '';
-
-    if (composed) {
-      const pos = cursorPosRef.current;
-      const val = ta.value;
-      const newVal = val.substring(0, pos) + composed + val.substring(pos);
-      ta.value = newVal;
-      const newPos = pos + composed.length;
-      ta.selectionStart = ta.selectionEnd = newPos;
-      cursorPosRef.current = newPos;
-      ta.focus();
-      onChange(newVal);
-      requestAnimationFrame(() => computeCursor(ta));
-    } else {
-      ta.focus();
-    }
-  }, [onChange, computeCursor]);
-
   const handleInput = useCallback(() => {
-    if (isComposingRef.current) return;
+    if (isVirtualRef.current) {
+      resetVirtualTimer();
+      // Cursor update only, no onChange during virtual mode
+      const ta = textareaRef.current;
+      if (ta) {
+        cancelAnimationFrame(pendingRafRef.current);
+        pendingRafRef.current = requestAnimationFrame(() => computeCursor(ta));
+      }
+      return;
+    }
+
     const ta = textareaRef.current;
     if (!ta) return;
-
     cancelAnimationFrame(pendingRafRef.current);
     pendingRafRef.current = requestAnimationFrame(() => {
       computeCursor(ta);
     });
-
     clearTimeout(pendingSaveRef.current);
     pendingSaveRef.current = setTimeout(() => {
       onChange(ta.value);
     }, 300);
-  }, [onChange, computeCursor]);
+  }, [onChange, computeCursor, resetVirtualTimer]);
 
   const handleClick = useCallback(() => {
+    if (isVirtualRef.current) exitVirtualMode();
     const ta = textareaRef.current;
     if (ta) computeCursor(ta);
-  }, [computeCursor]);
+  }, [computeCursor, exitVirtualMode]);
 
   return (
     <div className="editor-wrapper">
@@ -293,7 +343,6 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
         className="editor-textarea"
         defaultValue={content}
         onInput={handleInput}
-        onCompositionStart={handleCompositionStart}
         onScroll={syncScroll}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
@@ -304,16 +353,6 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
         wrap="off"
         placeholder="Start typing..."
         style={{ fontSize, lineHeight: 1.6 }}
-      />
-
-      {/* Hidden IME proxy textarea — only visible during composition */}
-      <textarea
-        ref={imeInputRef}
-        className="ime-proxy"
-        onCompositionEnd={handleImeCompositionEnd}
-        autoComplete="off"
-        autoCorrect="off"
-        autoCapitalize="off"
       />
 
       {isListening && interimTranscript && (

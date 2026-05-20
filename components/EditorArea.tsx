@@ -27,7 +27,8 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
   const cursorPosRef = useRef(0);
   const cursorLineRef = useRef(1);
   const initialScrollDone = useRef(false);
-  const pendingOnChangeRef = useRef(0);
+  const pendingRafRef = useRef(0);
+  const pendingSaveRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const {
     isSupported,
@@ -81,14 +82,17 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
     }
   }, [lineHeight]);
 
-  const updateCursor = useCallback(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
+  // Efficient cursor calc: count newlines without substring/split allocation
+  const computeCursor = useCallback((ta: HTMLTextAreaElement) => {
     const pos = ta.selectionStart;
     cursorPosRef.current = pos;
-    const lines = ta.value.substring(0, pos).split('\n');
-    const line = lines.length;
-    const col = lines[lines.length - 1].length + 1;
+    const val = ta.value;
+    let line = 1;
+    let lastNl = -1;
+    for (let i = 0; i < pos; i++) {
+      if (val.charCodeAt(i) === 10) { line++; lastNl = i; }
+    }
+    const col = pos - lastNl;
     cursorLineRef.current = line;
     highlightActiveLine(line);
     onCursorChange(line, col);
@@ -164,10 +168,10 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
         }
         ta.selectionStart = ta.selectionEnd = ta.value.length;
         cursorPosRef.current = ta.value.length;
-        updateCursor();
+        computeCursor(ta);
       });
     }
-  }, [content, updateCursor]);
+  }, [content, computeCursor]);
 
   useEffect(() => {
     if (cursorInsertPos != null && textareaRef.current) {
@@ -177,12 +181,11 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
       cursorPosRef.current = cursorInsertPos;
       ta.blur();
       ta.focus();
-      updateCursor();
+      computeCursor(ta);
       onCursorInsertDone?.();
     }
-  }, [cursorInsertPos, onCursorInsertDone, updateCursor]);
+  }, [cursorInsertPos, onCursorInsertDone, computeCursor]);
 
-  // Single text node for all line numbers instead of N individual spans
   const lineNumberText = useMemo(() => {
     const lines: string[] = [];
     for (let i = 1; i <= Math.max(lineCount, 1); i++) {
@@ -191,21 +194,33 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
     return lines.join('\n');
   }, [lineCount, bookmarks]);
 
-  // Position highlight on mount/rebuild
   useEffect(() => {
     highlightActiveLine(cursorLineRef.current);
   }, [lineNumberText, highlightActiveLine]);
 
-  // Throttle onChange to once per animation frame
+  // Core input handler: rAF for cursor, debounced onChange (300ms)
   const handleInput = useCallback(() => {
     const ta = textareaRef.current;
     if (!ta) return;
-    cancelAnimationFrame(pendingOnChangeRef.current);
-    pendingOnChangeRef.current = requestAnimationFrame(() => {
-      onChange(ta.value);
-      updateCursor();
+
+    // Cursor update via rAF — lightweight, once per frame
+    cancelAnimationFrame(pendingRafRef.current);
+    pendingRafRef.current = requestAnimationFrame(() => {
+      computeCursor(ta);
     });
-  }, [onChange, updateCursor]);
+
+    // Debounce content sync to reduce ta.value reads on large documents
+    clearTimeout(pendingSaveRef.current);
+    pendingSaveRef.current = setTimeout(() => {
+      onChange(ta.value);
+    }, 300);
+  }, [onChange, computeCursor]);
+
+  // Click handler for cursor position (only on click, not during typing)
+  const handleClick = useCallback(() => {
+    const ta = textareaRef.current;
+    if (ta) computeCursor(ta);
+  }, [computeCursor]);
 
   return (
     <div className="editor-wrapper">
@@ -223,8 +238,7 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
         defaultValue={content}
         onInput={handleInput}
         onScroll={syncScroll}
-        onClick={updateCursor}
-        onKeyUp={updateCursor}
+        onClick={handleClick}
         onKeyDown={handleKeyDown}
         spellCheck={false}
         autoComplete="off"

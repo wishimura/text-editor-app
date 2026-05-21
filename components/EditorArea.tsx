@@ -40,6 +40,8 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
   const virtualStartLineRef = useRef(0);
   const virtualTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const savedScrollRef = useRef(0);
+  const isComposingRef = useRef(false);
+  const lastInputTimeRef = useRef(0);
 
   const {
     isSupported,
@@ -158,6 +160,7 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
   const exitVirtualMode = useCallback(() => {
     const ta = textareaRef.current;
     if (!ta || !isVirtualRef.current) return;
+    if (isComposingRef.current) return;
 
     const pos = ta.selectionStart;
     const selEnd = ta.selectionEnd;
@@ -189,9 +192,13 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
 
   const resetVirtualTimer = useCallback(() => {
     clearTimeout(virtualTimerRef.current);
-    virtualTimerRef.current = setTimeout(() => {
+    virtualTimerRef.current = setTimeout(function tryExit() {
+      if (isComposingRef.current) {
+        virtualTimerRef.current = setTimeout(tryExit, 500);
+        return;
+      }
       exitVirtualMode();
-    }, 800);
+    }, 1200);
   }, [exitVirtualMode]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -247,6 +254,8 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
     const ta = textareaRef.current;
     if (!ta) return;
     if (isVirtualRef.current) return;
+    if (isComposingRef.current) return;
+    if (Date.now() - lastInputTimeRef.current < 2000) return;
     if (ta.value !== content) {
       const savedStart = ta.selectionStart;
       const savedEnd = ta.selectionEnd;
@@ -299,9 +308,10 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
   }, [lineNumberText, highlightActiveLine]);
 
   const handleInput = useCallback(() => {
+    lastInputTimeRef.current = Date.now();
+
     if (isVirtualRef.current) {
       resetVirtualTimer();
-      // Cursor update only, no onChange during virtual mode
       const ta = textareaRef.current;
       if (ta) {
         cancelAnimationFrame(pendingRafRef.current);
@@ -321,6 +331,14 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
       onChange(ta.value);
     }, 300);
   }, [onChange, computeCursor, resetVirtualTimer]);
+
+  const handleCompositionStart = useCallback(() => {
+    isComposingRef.current = true;
+  }, []);
+
+  const handleCompositionEnd = useCallback(() => {
+    isComposingRef.current = false;
+  }, []);
 
   const handleClick = useCallback(() => {
     if (isVirtualRef.current) exitVirtualMode();
@@ -346,6 +364,8 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
         onScroll={syncScroll}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
+        onCompositionStart={handleCompositionStart}
+        onCompositionEnd={handleCompositionEnd}
         spellCheck={false}
         autoComplete="off"
         autoCorrect="off"

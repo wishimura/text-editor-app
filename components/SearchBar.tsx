@@ -110,20 +110,31 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
 
   const handleReplace = useCallback(() => {
     if (matches.length === 0) return;
-    const text = getContent();
+    const ta = textareaRef.current;
+    if (!ta) return;
     const pos = matches[matchIndex];
-    const newContent = text.substring(0, pos) + replace + text.substring(pos + query.length);
-    onChange(newContent);
-  }, [matches, matchIndex, query, replace, onChange, getContent]);
+    ta.focus();
+    ta.selectionStart = pos;
+    ta.selectionEnd = pos + query.length;
+    document.execCommand('insertText', false, replace);
+    onChange(ta.value);
+    requestAnimationFrame(() => searchRef.current?.focus());
+  }, [matches, matchIndex, query, replace, onChange, textareaRef]);
 
   const handleReplaceAll = useCallback(() => {
     if (!query) return;
+    const ta = textareaRef.current;
+    if (!ta) return;
     const text = getContent();
     const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(escaped, 'gi');
     const newContent = text.replace(regex, replace);
-    onChange(newContent);
-  }, [query, replace, onChange, getContent]);
+    ta.focus();
+    ta.select();
+    document.execCommand('insertText', false, newContent);
+    onChange(ta.value);
+    requestAnimationFrame(() => searchRef.current?.focus());
+  }, [query, replace, onChange, getContent, textareaRef]);
 
   const handleClose = useCallback(() => {
     setQuery('');

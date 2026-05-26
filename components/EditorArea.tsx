@@ -216,36 +216,29 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
 
     if (e.key === 'Tab') {
       e.preventDefault();
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const val = ta.value;
-      const newVal = val.substring(0, start) + '  ' + val.substring(end);
-      ta.value = newVal;
-      ta.selectionStart = ta.selectionEnd = start + 2;
-      if (!isVirtualRef.current) onChange(newVal);
+      document.execCommand('insertText', false, '  ');
+      if (!isVirtualRef.current) onChange(ta.value);
       return;
     }
 
     if (bracketPairs[e.key]) {
       const start = ta.selectionStart;
       const end = ta.selectionEnd;
-      const val = ta.value;
 
       if (start !== end) {
         e.preventDefault();
-        const selected = val.substring(start, end);
-        const wrapped = e.key + selected + bracketPairs[e.key];
-        const newVal = val.substring(0, start) + wrapped + val.substring(end);
-        ta.value = newVal;
+        const selected = ta.value.substring(start, end);
+        ta.selectionStart = start;
+        ta.selectionEnd = end;
+        document.execCommand('insertText', false, e.key + selected + bracketPairs[e.key]);
         ta.selectionStart = start + 1;
         ta.selectionEnd = end + 1;
-        if (!isVirtualRef.current) onChange(newVal);
+        if (!isVirtualRef.current) onChange(ta.value);
       } else {
         e.preventDefault();
-        const newVal = val.substring(0, start) + e.key + bracketPairs[e.key] + val.substring(end);
-        ta.value = newVal;
+        document.execCommand('insertText', false, e.key + bracketPairs[e.key]);
         ta.selectionStart = ta.selectionEnd = start + 1;
-        if (!isVirtualRef.current) onChange(newVal);
+        if (!isVirtualRef.current) onChange(ta.value);
       }
     }
   }, [onChange, enterVirtualMode, resetVirtualTimer]);

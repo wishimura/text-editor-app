@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, CompositionEvent } from 'react';
 
 interface Command {
   name: string;
@@ -17,6 +17,7 @@ interface CommandPaletteProps {
 export default function CommandPalette({ visible, onClose, commands }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const isComposingRef = useRef(false);
 
   const filtered = commands.filter(c =>
     c.name.toLowerCase().includes(query.toLowerCase())
@@ -31,7 +32,7 @@ export default function CommandPalette({ visible, onClose, commands }: CommandPa
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') onClose();
-    if (e.key === 'Enter' && filtered.length > 0) {
+    if (e.key === 'Enter' && !isComposingRef.current && filtered.length > 0) {
       onClose();
       filtered[0].action();
     }
@@ -50,8 +51,13 @@ export default function CommandPalette({ visible, onClose, commands }: CommandPa
           className="command-input"
           placeholder="Type a command..."
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => { if (!isComposingRef.current) setQuery(e.target.value); }}
           onKeyDown={handleKeyDown}
+          onCompositionStart={() => { isComposingRef.current = true; }}
+          onCompositionEnd={(e: CompositionEvent<HTMLInputElement>) => {
+            isComposingRef.current = false;
+            setQuery(e.currentTarget.value);
+          }}
           autoComplete="off"
         />
         <div className="command-list">

@@ -18,7 +18,14 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
   const [matches, setMatches] = useState<number[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
   const isComposingRef = useRef(false);
+  // Full document content, updated from prop and after replace ops
+  const fullContentRef = useRef(content);
 
+  useEffect(() => {
+    fullContentRef.current = content;
+  }, [content]);
+
+  // --- IME composition guards ---
   const handleCompositionStart = useCallback(() => {
     isComposingRef.current = true;
   }, []);
@@ -33,26 +40,35 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
     setReplace(e.currentTarget.value);
   }, []);
 
-  const getContent = useCallback(() => {
-    return textareaRef.current?.value ?? '';
-  }, [textareaRef]);
+  // --- Search logic (always uses full content, never windowed) ---
+  const findMatches = useCallback((text: string, q: string): number[] => {
+    if (!q) return [];
+    const found: number[] = [];
+    const lower = text.toLowerCase();
+    const ql = q.toLowerCase();
+    let idx = 0;
+    while (true) {
+      const pos = lower.indexOf(ql, idx);
+      if (pos === -1) break;
+      found.push(pos);
+      idx = pos + 1;
+    }
+    return found;
+  }, []);
 
-  const highlightMatch = useCallback((pos: number, focusTextarea = false) => {
+  const scrollToPos = useCallback((pos: number) => {
     const ta = textareaRef.current;
     if (!ta || pos < 0) return;
-    ta.selectionStart = pos;
-    ta.selectionEnd = pos + query.length;
-    const linesBefore = ta.value.substring(0, pos).split('\n');
-    const lineNum = linesBefore.length - 1;
+    const textBefore = fullContentRef.current.substring(0, pos);
+    const lineNum = textBefore.split('\n').length - 1;
     const lineHeightPx = parseFloat(getComputedStyle(ta).lineHeight) || 22.4;
     ta.scrollTop = Math.max(0, lineNum * lineHeightPx - ta.clientHeight / 3);
-    if (focusTextarea) {
-      ta.focus();
-    }
-  }, [textareaRef, query]);
+  }, [textareaRef]);
 
+  // --- Reset on open/close ---
   useEffect(() => {
     if (visible) {
+      fullContentRef.current = textareaRef.current?.value ?? content;
       setQuery('');
       setReplace('');
       setMatches([]);
@@ -64,77 +80,92 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
       setMatchIndex(0);
       const ta = textareaRef.current;
       if (ta) {
-        const pos = ta.selectionStart;
-        ta.selectionEnd = pos;
+        ta.selectionEnd = ta.selectionStart;
         ta.focus();
       }
     }
-  }, [visible, textareaRef]);
+  }, [visible, textareaRef, content]);
 
+  // --- Live search (no focus stealing) ---
   useEffect(() => {
     if (!visible || !query) {
       setMatches([]);
       setMatchIndex(0);
       return;
     }
-    const text = getContent();
-    const found: number[] = [];
-    const lower = text.toLowerCase();
-    const q = query.toLowerCase();
-    let idx = 0;
-    while (true) {
-      const pos = lower.indexOf(q, idx);
-      if (pos === -1) break;
-      found.push(pos);
-      idx = pos + 1;
-    }
+    const found = findMatches(fullContentRef.current, query);
     setMatches(found);
     setMatchIndex(0);
-    if (found.length > 0) highlightMatch(found[0], false);
-  }, [visible, query, highlightMatch, getContent]);
+    if (found.length > 0) scrollToPos(found[0]);
+  }, [visible, query, findMatches, scrollToPos]);
+
+  // --- Navigation: focus textarea and highlight match ---
+  const navigateToMatch = useCallback((index: number) => {
+    if (matches.length === 0) return;
+    const pos = matches[index];
+    const ta = textareaRef.current;
+    if (!ta) return;
+    // Focus exits virtual mode via EditorArea's handleFocus
+    ta.focus();
+    ta.selectionStart = pos;
+    ta.selectionEnd = pos + query.length;
+    scrollToPos(pos);
+  }, [matches, textareaRef, query, scrollToPos]);
 
   const goNext = useCallback(() => {
     if (matches.length === 0) return;
     const next = (matchIndex + 1) % matches.length;
     setMatchIndex(next);
-    highlightMatch(matches[next], true);
-  }, [matches, matchIndex, highlightMatch]);
+    navigateToMatch(next);
+  }, [matches, matchIndex, navigateToMatch]);
 
   const goPrev = useCallback(() => {
     if (matches.length === 0) return;
     const prev = (matchIndex - 1 + matches.length) % matches.length;
     setMatchIndex(prev);
-    highlightMatch(matches[prev], true);
-  }, [matches, matchIndex, highlightMatch]);
+    navigateToMatch(prev);
+  }, [matches, matchIndex, navigateToMatch]);
 
+  // --- Replace: uses execCommand for undo support ---
   const handleReplace = useCallback(() => {
     if (matches.length === 0) return;
     const ta = textareaRef.current;
     if (!ta) return;
     const pos = matches[matchIndex];
+    // Focus textarea (exits virtual mode, restores full content)
     ta.focus();
     ta.selectionStart = pos;
     ta.selectionEnd = pos + query.length;
     document.execCommand('insertText', false, replace);
-    onChange(ta.value);
+    const newContent = ta.value;
+    fullContentRef.current = newContent;
+    onChange(newContent);
+    // Re-search with updated content
+    const found = findMatches(newContent, query);
+    setMatches(found);
+    setMatchIndex(Math.min(matchIndex, Math.max(0, found.length - 1)));
     requestAnimationFrame(() => searchRef.current?.focus());
-  }, [matches, matchIndex, query, replace, onChange, textareaRef]);
+  }, [matches, matchIndex, query, replace, onChange, findMatches, textareaRef]);
 
   const handleReplaceAll = useCallback(() => {
     if (!query) return;
     const ta = textareaRef.current;
     if (!ta) return;
-    const text = getContent();
     const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(escaped, 'gi');
-    const newContent = text.replace(regex, replace);
+    const newContent = fullContentRef.current.replace(regex, replace);
+    // Focus textarea (exits virtual mode), replace all via execCommand
     ta.focus();
     ta.select();
     document.execCommand('insertText', false, newContent);
+    fullContentRef.current = newContent;
     onChange(ta.value);
+    setMatches([]);
+    setMatchIndex(0);
     requestAnimationFrame(() => searchRef.current?.focus());
-  }, [query, replace, onChange, getContent, textareaRef]);
+  }, [query, replace, onChange, textareaRef]);
 
+  // --- Close ---
   const handleClose = useCallback(() => {
     setQuery('');
     setMatches([]);

@@ -34,21 +34,20 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
   }, []);
 
   const getContent = useCallback(() => {
-    return textareaRef.current?.value ?? content;
-  }, [textareaRef, content]);
+    return textareaRef.current?.value ?? '';
+  }, [textareaRef]);
 
   const highlightMatch = useCallback((pos: number, focusTextarea = false) => {
     const ta = textareaRef.current;
     if (!ta || pos < 0) return;
-    ta.focus();
     ta.selectionStart = pos;
     ta.selectionEnd = pos + query.length;
     const linesBefore = ta.value.substring(0, pos).split('\n');
     const lineNum = linesBefore.length - 1;
     const lineHeightPx = parseFloat(getComputedStyle(ta).lineHeight) || 22.4;
     ta.scrollTop = Math.max(0, lineNum * lineHeightPx - ta.clientHeight / 3);
-    if (!focusTextarea) {
-      requestAnimationFrame(() => searchRef.current?.focus());
+    if (focusTextarea) {
+      ta.focus();
     }
   }, [textareaRef, query]);
 

@@ -333,11 +333,14 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
     isComposingRef.current = false;
   }, []);
 
-  const handleClick = useCallback(() => {
+  const handleFocus = useCallback(() => {
     if (isVirtualRef.current) exitVirtualMode();
+  }, [exitVirtualMode]);
+
+  const handleClick = useCallback(() => {
     const ta = textareaRef.current;
     if (ta) computeCursor(ta);
-  }, [computeCursor, exitVirtualMode]);
+  }, [computeCursor]);
 
   return (
     <div className="editor-wrapper">
@@ -355,6 +358,7 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
         defaultValue={content}
         onInput={handleInput}
         onScroll={syncScroll}
+        onFocus={handleFocus}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         onCompositionStart={handleCompositionStart}

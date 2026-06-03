@@ -15,10 +15,6 @@ interface EditorAreaProps {
   bookmarks?: Set<number>;
 }
 
-const bracketPairs: Record<string, string> = {
-  '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`',
-};
-
 const VIRTUAL_THRESHOLD = 5000;
 const VIRTUAL_LINE_BUFFER = 150;
 
@@ -221,26 +217,6 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
       return;
     }
 
-    if (bracketPairs[e.key]) {
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-
-      if (start !== end) {
-        e.preventDefault();
-        const selected = ta.value.substring(start, end);
-        ta.selectionStart = start;
-        ta.selectionEnd = end;
-        document.execCommand('insertText', false, e.key + selected + bracketPairs[e.key]);
-        ta.selectionStart = start + 1;
-        ta.selectionEnd = end + 1;
-        if (!isVirtualRef.current) onChange(ta.value);
-      } else {
-        e.preventDefault();
-        document.execCommand('insertText', false, e.key + bracketPairs[e.key]);
-        ta.selectionStart = ta.selectionEnd = start + 1;
-        if (!isVirtualRef.current) onChange(ta.value);
-      }
-    }
   }, [onChange, enterVirtualMode, resetVirtualTimer]);
 
   useEffect(() => {

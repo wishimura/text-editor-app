@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect, CompositionEvent } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 interface SearchBarProps {
   visible: boolean;
@@ -11,36 +11,17 @@ interface SearchBarProps {
 }
 
 export default function SearchBar({ visible, onClose, content, onChange, textareaRef }: SearchBarProps) {
-  const [query, setQuery] = useState('');
-  const [replace, setReplace] = useState('');
   const [showReplace, setShowReplace] = useState(false);
   const [matchIndex, setMatchIndex] = useState(0);
   const [matches, setMatches] = useState<number[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
-  const isComposingRef = useRef(false);
-  // Full document content, updated from prop and after replace ops
+  const replaceRef = useRef<HTMLInputElement>(null);
   const fullContentRef = useRef(content);
 
   useEffect(() => {
     fullContentRef.current = content;
   }, [content]);
 
-  // --- IME composition guards ---
-  const handleCompositionStart = useCallback(() => {
-    isComposingRef.current = true;
-  }, []);
-
-  const handleSearchCompositionEnd = useCallback((e: CompositionEvent<HTMLInputElement>) => {
-    isComposingRef.current = false;
-    setQuery(e.currentTarget.value);
-  }, []);
-
-  const handleReplaceCompositionEnd = useCallback((e: CompositionEvent<HTMLInputElement>) => {
-    isComposingRef.current = false;
-    setReplace(e.currentTarget.value);
-  }, []);
-
-  // --- Search logic (always uses full content, never windowed) ---
   const findMatches = useCallback((text: string, q: string): number[] => {
     if (!q) return [];
     const found: number[] = [];
@@ -65,19 +46,17 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
     ta.scrollTop = Math.max(0, lineNum * lineHeightPx - ta.clientHeight / 3);
   }, [textareaRef]);
 
-  // --- Reset on open/close (only when visibility changes) ---
+  // Reset on open/close
   useEffect(() => {
     if (visible) {
       fullContentRef.current = textareaRef.current?.value ?? content;
-      setQuery('');
-      setReplace('');
+      if (searchRef.current) searchRef.current.value = '';
+      if (replaceRef.current) replaceRef.current.value = '';
       setMatches([]);
       setMatchIndex(0);
+      setShowReplace(false);
       requestAnimationFrame(() => searchRef.current?.focus());
     } else {
-      setQuery('');
-      setMatches([]);
-      setMatchIndex(0);
       const ta = textareaRef.current;
       if (ta) {
         ta.selectionEnd = ta.selectionStart;
@@ -86,31 +65,31 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
     }
   }, [visible]);
 
-  // --- Live search (no focus stealing) ---
-  useEffect(() => {
-    if (!visible || !query) {
+  const doSearch = useCallback(() => {
+    const q = searchRef.current?.value ?? '';
+    if (!q) {
       setMatches([]);
       setMatchIndex(0);
       return;
     }
-    const found = findMatches(fullContentRef.current, query);
+    const found = findMatches(fullContentRef.current, q);
     setMatches(found);
     setMatchIndex(0);
     if (found.length > 0) scrollToPos(found[0]);
-  }, [visible, query, findMatches, scrollToPos]);
+  }, [findMatches, scrollToPos]);
 
-  // --- Navigation: focus textarea and highlight match ---
-  const navigateToMatch = useCallback((index: number) => {
-    if (matches.length === 0) return;
-    const pos = matches[index];
+  const navigateToMatch = useCallback((index: number, currentMatches?: number[]) => {
+    const m = currentMatches ?? matches;
+    if (m.length === 0) return;
+    const pos = m[index];
+    const q = searchRef.current?.value ?? '';
     const ta = textareaRef.current;
     if (!ta) return;
-    // Focus exits virtual mode via EditorArea's handleFocus
     ta.focus();
     ta.selectionStart = pos;
-    ta.selectionEnd = pos + query.length;
+    ta.selectionEnd = pos + q.length;
     scrollToPos(pos);
-  }, [matches, textareaRef, query, scrollToPos]);
+  }, [matches, textareaRef, scrollToPos]);
 
   const goNext = useCallback(() => {
     if (matches.length === 0) return;
@@ -126,35 +105,36 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
     navigateToMatch(prev);
   }, [matches, matchIndex, navigateToMatch]);
 
-  // --- Replace: uses execCommand for undo support ---
   const handleReplace = useCallback(() => {
     if (matches.length === 0) return;
     const ta = textareaRef.current;
     if (!ta) return;
+    const q = searchRef.current?.value ?? '';
+    const r = replaceRef.current?.value ?? '';
     const pos = matches[matchIndex];
-    // Focus textarea (exits virtual mode, restores full content)
     ta.focus();
     ta.selectionStart = pos;
-    ta.selectionEnd = pos + query.length;
-    document.execCommand('insertText', false, replace);
+    ta.selectionEnd = pos + q.length;
+    document.execCommand('insertText', false, r);
     const newContent = ta.value;
     fullContentRef.current = newContent;
     onChange(newContent);
-    // Re-search with updated content
-    const found = findMatches(newContent, query);
+    const found = findMatches(newContent, q);
     setMatches(found);
-    setMatchIndex(Math.min(matchIndex, Math.max(0, found.length - 1)));
+    const newIndex = Math.min(matchIndex, Math.max(0, found.length - 1));
+    setMatchIndex(newIndex);
     requestAnimationFrame(() => searchRef.current?.focus());
-  }, [matches, matchIndex, query, replace, onChange, findMatches, textareaRef]);
+  }, [matches, matchIndex, onChange, findMatches, textareaRef]);
 
   const handleReplaceAll = useCallback(() => {
-    if (!query) return;
+    const q = searchRef.current?.value ?? '';
+    if (!q) return;
     const ta = textareaRef.current;
     if (!ta) return;
-    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const r = replaceRef.current?.value ?? '';
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(escaped, 'gi');
-    const newContent = fullContentRef.current.replace(regex, replace);
-    // Focus textarea (exits virtual mode), replace all via execCommand
+    const newContent = fullContentRef.current.replace(regex, r);
     ta.focus();
     ta.select();
     document.execCommand('insertText', false, newContent);
@@ -163,11 +143,9 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
     setMatches([]);
     setMatchIndex(0);
     requestAnimationFrame(() => searchRef.current?.focus());
-  }, [query, replace, onChange, textareaRef]);
+  }, [onChange, textareaRef]);
 
-  // --- Close ---
   const handleClose = useCallback(() => {
-    setQuery('');
     setMatches([]);
     setMatchIndex(0);
     onClose();
@@ -175,7 +153,7 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') { handleClose(); return; }
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
       e.preventDefault();
       if (e.shiftKey) goPrev();
       else goNext();
@@ -192,11 +170,10 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
           className="search-input"
           type="text"
           placeholder="Search..."
-          value={query}
-          onChange={(e) => { if (!isComposingRef.current) setQuery(e.target.value); }}
+          defaultValue=""
+          onInput={doSearch}
           onKeyDown={handleKeyDown}
-          onCompositionStart={handleCompositionStart}
-          onCompositionEnd={handleSearchCompositionEnd}
+          autoFocus
         />
         <span className="search-count">
           {matches.length > 0 ? `${matchIndex + 1}/${matches.length}` : 'No results'}
@@ -211,14 +188,12 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
       {showReplace && (
         <div className="search-row">
           <input
+            ref={replaceRef}
             className="search-input"
             type="text"
             placeholder="Replace..."
-            value={replace}
-            onChange={(e) => { if (!isComposingRef.current) setReplace(e.target.value); }}
+            defaultValue=""
             onKeyDown={handleKeyDown}
-            onCompositionStart={handleCompositionStart}
-            onCompositionEnd={handleReplaceCompositionEnd}
           />
           <button className="search-btn" onClick={handleReplace} title="Replace">Replace</button>
           <button className="search-btn" onClick={handleReplaceAll} title="Replace All">All</button>

@@ -197,7 +197,7 @@ export default function Editor() {
         e.preventDefault();
         setCommandPaletteOpen(true);
       }
-      if (mod && e.key === '\\') {
+      if (mod && e.key === 'b' && !e.shiftKey) {
         e.preventDefault();
         setSidebarCollapsed(prev => !prev);
       }
@@ -331,7 +331,7 @@ export default function Editor() {
     { name: 'Open File', shortcut: '⌘ O', action: handleOpenFile },
     { name: 'Download File', shortcut: '⌘ ⇧ S', action: handleDownload },
     { name: 'Close Tab', shortcut: '', action: handleCloseActiveTab },
-    { name: 'Toggle Sidebar', shortcut: '⌘ \\', action: toggleSidebar },
+    { name: 'Toggle Sidebar', shortcut: '⌘ B', action: toggleSidebar },
     { name: 'Find & Replace', shortcut: '⌘ F', action: handleToggleSearch },
     { name: 'Markdown Preview', shortcut: '⌘ ⇧ M', action: handleToggleMdPreview },
     { name: 'Insert Date Header', shortcut: '⌘ ⇧ H', action: handleInsertHeader },
@@ -465,7 +465,7 @@ export default function Editor() {
                   <span>AI Assistant</span>
                 </div>
                 <div className="shortcut-row">
-                  <kbd>⌘ \</kbd>
+                  <kbd>⌘ B</kbd>
                   <span>Toggle Sidebar</span>
                 </div>
               </div>

@@ -65,7 +65,7 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
     ta.scrollTop = Math.max(0, lineNum * lineHeightPx - ta.clientHeight / 3);
   }, [textareaRef]);
 
-  // --- Reset on open/close ---
+  // --- Reset on open/close (only when visibility changes) ---
   useEffect(() => {
     if (visible) {
       fullContentRef.current = textareaRef.current?.value ?? content;
@@ -84,7 +84,7 @@ export default function SearchBar({ visible, onClose, content, onChange, textare
         ta.focus();
       }
     }
-  }, [visible, textareaRef, content]);
+  }, [visible]);
 
   // --- Live search (no focus stealing) ---
   useEffect(() => {

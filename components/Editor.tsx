@@ -394,6 +394,14 @@ export default function Editor() {
           onMoveToFolder={updateFolder}
         />
 
+        <button
+          className="sidebar-toggle-btn"
+          onClick={toggleSidebar}
+          title={sidebarCollapsed ? 'サイドバーを開く (⌘B)' : 'サイドバーを閉じる (⌘B)'}
+        >
+          {sidebarCollapsed ? '▶' : '◀'}
+        </button>
+
         <div className="editor-area">
           <TabBar
             documents={documents}

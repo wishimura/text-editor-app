@@ -17,7 +17,7 @@ const SHORTCUTS = [
   { key: '⌘ ⇧ B', desc: 'ブックマーク' },
   { key: '⌘ +/-', desc: 'フォントサイズ' },
   { key: '⌘ ⇧ K', desc: 'コマンドパレット' },
-  { key: '⌘ \\', desc: 'サイドバー開閉' },
+  { key: '⌘ B', desc: 'サイドバー開閉' },
   { key: '⌘ S', desc: '保存' },
   { key: '⌘ ⇧ H', desc: '日付ヘッダー挿入' },
   { key: '⌘ /', desc: 'AIアシスタント開閉' },

@@ -415,6 +415,7 @@ export default function Editor() {
             <>
               {/* Editor Toolbar */}
               <div className="editor-toolbar">
+                <button className="toolbar-btn" onClick={handleOpenFile} title="ファイルを開く (⌘O)">📂</button>
                 <button className="toolbar-btn" onClick={handleToggleSearch} title="検索・置換 (⌘F)">🔍</button>
                 <button className="toolbar-btn" onClick={handleDownload} title="ダウンロード (⌘⇧S)">💾</button>
                 <button className="toolbar-btn" onClick={handleToggleMdPreview} title="MDプレビュー (⌘⇧M)" disabled={activeDoc.language !== 'md'}>📖</button>
@@ -459,22 +460,36 @@ export default function Editor() {
             <div className="welcome-screen">
               <img className="logo-img" src="/citrusapp.png" alt="CitrusApp" height="80" />
               <h2 style={{ color: '#3a9b4a' }}>CitrusApp</h2>
+              <div className="welcome-actions">
+                <button className="welcome-btn" onClick={handleCreateDocument}>
+                  <span className="welcome-btn-icon">+</span>
+                  新規ファイル
+                </button>
+                <button className="welcome-btn" onClick={handleOpenFile}>
+                  <span className="welcome-btn-icon">📂</span>
+                  ファイルを開く
+                </button>
+              </div>
               <div className="shortcuts">
+                <div className="shortcut-row">
+                  <kbd>⌘ ⇧ E</kbd>
+                  <span>New File</span>
+                </div>
+                <div className="shortcut-row">
+                  <kbd>⌘ O</kbd>
+                  <span>Open File</span>
+                </div>
                 <div className="shortcut-row">
                   <kbd>⌘ ⇧ K</kbd>
                   <span>Command Palette</span>
                 </div>
                 <div className="shortcut-row">
-                  <kbd>⌘ ⇧ H</kbd>
-                  <span>Insert Date Header</span>
+                  <kbd>⌘ B</kbd>
+                  <span>Toggle Sidebar</span>
                 </div>
                 <div className="shortcut-row">
                   <kbd>⌘ /</kbd>
                   <span>AI Assistant</span>
-                </div>
-                <div className="shortcut-row">
-                  <kbd>⌘ B</kbd>
-                  <span>Toggle Sidebar</span>
                 </div>
               </div>
             </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 interface MarkdownPreviewProps {
   content: string;
@@ -47,15 +47,25 @@ function renderMarkdown(md: string): string {
 }
 
 export default function MarkdownPreview({ content, visible, onClose }: MarkdownPreviewProps) {
+  const [fullscreen, setFullscreen] = useState(false);
   const html = useMemo(() => renderMarkdown(content), [content]);
 
   if (!visible) return null;
 
   return (
-    <div className="md-preview-panel">
+    <div className={`md-preview-panel${fullscreen ? ' fullscreen' : ''}`}>
       <div className="md-preview-header">
         <span className="md-preview-title">Markdown Preview</span>
-        <button className="md-preview-close" onClick={onClose}>×</button>
+        <div className="md-preview-actions">
+          <button
+            className="md-preview-action-btn"
+            onClick={() => setFullscreen(prev => !prev)}
+            title={fullscreen ? '分割表示に戻す' : '全画面表示'}
+          >
+            {fullscreen ? '⊡' : '⊞'}
+          </button>
+          <button className="md-preview-close" onClick={() => { setFullscreen(false); onClose(); }}>×</button>
+        </div>
       </div>
       <div
         className="md-preview-content"

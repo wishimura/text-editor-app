@@ -1856,6 +1856,34 @@ html, body {
 .md-preview-content .md-check { margin: 4px 0; }
 .md-preview-content .md-check.done { color: var(--green); }
 
+.md-preview-content .md-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 13px;
+}
+
+.md-preview-content .md-table th,
+.md-preview-content .md-table td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  line-height: 1.5;
+}
+
+.md-preview-content .md-table th {
+  background: var(--bg-medium);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.md-preview-content .md-table td {
+  color: var(--text-secondary);
+}
+
+.md-preview-content .md-table tr:hover td {
+  background: var(--bg-hover);
+}
+
 /* ========================================
    Bookmarks
    ======================================== */

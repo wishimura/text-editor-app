@@ -8,10 +8,55 @@ interface MarkdownPreviewProps {
   onClose: () => void;
 }
 
+function parseTable(block: string): string {
+  const lines = block.trim().split('\n');
+  if (lines.length < 2) return block;
+
+  const parseRow = (line: string) =>
+    line.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+
+  const headers = parseRow(lines[0]);
+  const alignLine = parseRow(lines[1]);
+
+  const aligns = alignLine.map(c => {
+    if (/^:-+:$/.test(c)) return 'center';
+    if (/^-+:$/.test(c)) return 'right';
+    return 'left';
+  });
+
+  let html = '<table class="md-table"><thead><tr>';
+  headers.forEach((h, i) => {
+    html += `<th style="text-align:${aligns[i] || 'left'}">${h}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  for (let r = 2; r < lines.length; r++) {
+    const cells = parseRow(lines[r]);
+    html += '<tr>';
+    cells.forEach((c, i) => {
+      html += `<td style="text-align:${aligns[i] || 'left'}">${c}</td>`;
+    });
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
 function renderMarkdown(md: string): string {
-  let html = md
-    // Code blocks
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="md-code-block"><code>$2</code></pre>')
+  // Extract code blocks first to protect them
+  const codeBlocks: string[] = [];
+  let processed = md.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    codeBlocks.push(`<pre class="md-code-block"><code>${code}</code></pre>`);
+    return `\x00CODE${codeBlocks.length - 1}\x00`;
+  });
+
+  // Parse tables before other block-level transforms
+  processed = processed.replace(
+    /(?:^|\n)((?:\|.+\|[ \t]*\n)\|[-:| ]+\|[ \t]*\n(?:\|.+\|[ \t]*(?:\n|$))+)/g,
+    (_, table) => '\n' + parseTable(table) + '\n'
+  );
+
+  let html = processed
     // Inline code
     .replace(/`([^`]+)`/g, '<code class="md-inline-code">$1</code>')
     // Headers
@@ -42,6 +87,9 @@ function renderMarkdown(md: string): string {
     .replace(/\n\n/g, '</p><p>')
     // Single newlines
     .replace(/\n/g, '<br/>');
+
+  // Restore code blocks
+  html = html.replace(/\x00CODE(\d+)\x00/g, (_, i) => codeBlocks[parseInt(i)]);
 
   return `<p>${html}</p>`;
 }

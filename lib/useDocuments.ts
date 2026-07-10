@@ -202,16 +202,68 @@ export function useDocuments() {
   const flushSave = useCallback(async () => {
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = undefined;
     }
     if (activeDocId) {
       const content = localContentRef.current.get(activeDocId);
       if (content !== undefined) {
-        await getSupabase()
+        saveStatusRef.current = 'saving';
+        setSaveStatus('saving');
+        const { error } = await getSupabase()
           .from('documents')
           .update({ content, updated_at: new Date().toISOString() })
           .eq('id', activeDocId);
+        const next = error ? 'error' : 'saved';
+        saveStatusRef.current = next;
+        setSaveStatus(next);
       }
     }
+  }, [activeDocId]);
+
+  // Flush pending saves when page goes to background or closes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = undefined;
+        // Use sendBeacon for reliability on page hide
+        const docId = activeDocId;
+        if (!docId) return;
+        const content = localContentRef.current.get(docId);
+        if (content === undefined) return;
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        if (!supabaseUrl || !supabaseKey) return;
+        const url = `${supabaseUrl}/rest/v1/documents?id=eq.${docId}`;
+        const body = JSON.stringify({ content, updated_at: new Date().toISOString() });
+        const blob = new Blob([body], { type: 'application/json' });
+        // sendBeacon doesn't support custom headers, so fall back to fetch with keepalive
+        fetch(url, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Prefer': 'return=minimal',
+          },
+          body,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      if (saveTimerRef.current) {
+        handleVisibilityChange();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, [activeDocId]);
 
   const renameDocument = useCallback(async (id: string, newTitle: string) => {

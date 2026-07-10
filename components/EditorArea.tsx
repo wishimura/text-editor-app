@@ -309,6 +309,27 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
     isComposingRef.current = false;
   }, []);
 
+  // Flush unsaved content when page goes to background (PWA reliability)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        const ta = textareaRef.current;
+        if (!ta) return;
+        // Cancel pending debounce and save immediately
+        clearTimeout(pendingSaveRef.current);
+        if (isVirtualRef.current) {
+          // Exit virtual mode to reconstruct full content
+          isComposingRef.current = false;
+          exitVirtualMode();
+        } else {
+          onChange(ta.value);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [onChange, exitVirtualMode]);
+
   const handleFocus = useCallback(() => {
     if (isVirtualRef.current) exitVirtualMode();
   }, [exitVirtualMode]);

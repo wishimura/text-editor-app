@@ -415,9 +415,17 @@ export default function Editor() {
             <>
               {/* Editor Toolbar */}
               <div className="editor-toolbar">
+                <button
+                  className={`toolbar-btn save-btn${saveStatus === 'saving' ? ' saving' : ''}${saveStatus === 'saved' ? ' saved' : ''}${saveStatus === 'error' ? ' error' : ''}`}
+                  onClick={flushSave}
+                  title="保存 (⌘S)"
+                >
+                  {saveStatus === 'saving' ? '⏳' : saveStatus === 'saved' ? '✓' : saveStatus === 'error' ? '⚠' : '💾'}
+                </button>
+                <div className="toolbar-separator" />
                 <button className="toolbar-btn" onClick={handleOpenFile} title="ファイルを開く (⌘O)">📂</button>
                 <button className="toolbar-btn" onClick={handleToggleSearch} title="検索・置換 (⌘F)">🔍</button>
-                <button className="toolbar-btn" onClick={handleDownload} title="ダウンロード (⌘⇧S)">💾</button>
+                <button className="toolbar-btn" onClick={handleDownload} title="ダウンロード (⌘⇧S)">📥</button>
                 <button className="toolbar-btn" onClick={handleToggleMdPreview} title="MDプレビュー (⌘⇧M)" disabled={activeDoc.language !== 'md'}>📖</button>
                 <button className="toolbar-btn" onClick={handleToggleBookmark} title="ブックマーク (⌘⇧B)">🔖</button>
                 <button className="toolbar-btn" onClick={handleNextBookmark} title="次のブックマーク" disabled={bookmarks.size === 0}>⏭</button>

@@ -5,6 +5,7 @@ import { getSupabase } from './supabase';
 import { Document, getLangFromTitle } from './types';
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+export type ReloadStatus = 'idle' | 'reloading' | 'done' | 'error';
 
 export function useDocuments() {
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -13,6 +14,7 @@ export function useDocuments() {
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [reloadStatus, setReloadStatus] = useState<ReloadStatus>('idle');
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const localContentRef = useRef<Map<string, string>>(new Map());
   const restoredRef = useRef(false);
@@ -220,6 +222,42 @@ export function useDocuments() {
     }
   }, [activeDocId]);
 
+  const reloadDocuments = useCallback(async () => {
+    setReloadStatus('reloading');
+    let result = await getSupabase()
+      .from('documents')
+      .select('*')
+      .is('deleted_at', null)
+      .order('updated_at', { ascending: false });
+
+    if (result.error) {
+      result = await getSupabase()
+        .from('documents')
+        .select('*')
+        .order('updated_at', { ascending: false });
+    }
+
+    const { data, error } = result;
+    if (!error && data) {
+      setDocuments(data);
+      data.forEach(doc => localContentRef.current.set(doc.id, doc.content));
+      setReloadStatus('done');
+      setTimeout(() => setReloadStatus('idle'), 2000);
+    } else {
+      setReloadStatus('error');
+      setTimeout(() => setReloadStatus('idle'), 3000);
+    }
+
+    const trashResult = await getSupabase()
+      .from('documents')
+      .select('*')
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false });
+    if (!trashResult.error && trashResult.data) {
+      setTrash(trashResult.data);
+    }
+  }, []);
+
   // Flush pending saves when page goes to background or closes
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -310,6 +348,8 @@ export function useDocuments() {
     updateContent,
     flushSave,
     refetch: fetchDocuments,
+    reloadDocuments,
+    reloadStatus,
     renameDocument,
     updateFolder,
   };

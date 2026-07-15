@@ -33,6 +33,8 @@ export default function Editor() {
     updateContent,
     flushSave,
     refetch,
+    reloadDocuments,
+    reloadStatus,
     renameDocument,
     updateFolder,
   } = useDocuments();
@@ -343,8 +345,8 @@ export default function Editor() {
     { name: 'Save', shortcut: '⌘ S', action: flushSave },
     { name: 'Voice → New Document', shortcut: '', action: handleVoiceNewDoc },
     { name: 'AI Assistant', shortcut: '⌘ /', action: handleToggleAiPanel },
-    { name: 'Reload Documents', shortcut: '', action: refetch },
-  ], [handleCreateDocument, handleOpenFile, handleDownload, handleCloseActiveTab, toggleSidebar, handleToggleSearch, handleToggleMdPreview, handleInsertHeader, handleToggleBookmark, handleNextBookmark, handleFontSizeUp, handleFontSizeDown, toggleTheme, flushSave, handleVoiceNewDoc, handleToggleAiPanel, refetch]);
+    { name: 'Reload Documents', shortcut: '', action: reloadDocuments },
+  ], [handleCreateDocument, handleOpenFile, handleDownload, handleCloseActiveTab, toggleSidebar, handleToggleSearch, handleToggleMdPreview, handleInsertHeader, handleToggleBookmark, handleNextBookmark, handleFontSizeUp, handleFontSizeDown, toggleTheme, flushSave, handleVoiceNewDoc, handleToggleAiPanel, reloadDocuments]);
 
   if (isLoading) {
     return (
@@ -418,23 +420,30 @@ export default function Editor() {
                 <button
                   className={`toolbar-btn save-btn${saveStatus === 'saving' ? ' saving' : ''}${saveStatus === 'saved' ? ' saved' : ''}${saveStatus === 'error' ? ' error' : ''}`}
                   onClick={flushSave}
-                  title="保存 (⌘S)"
+                  data-tooltip="保存 (⌘S)"
                 >
                   {saveStatus === 'saving' ? '⏳' : saveStatus === 'saved' ? '✓' : saveStatus === 'error' ? '⚠' : '💾'}
                 </button>
+                <button
+                  className={`toolbar-btn reload-btn${reloadStatus === 'reloading' ? ' reloading' : ''}${reloadStatus === 'done' ? ' done' : ''}${reloadStatus === 'error' ? ' error' : ''}`}
+                  onClick={reloadDocuments}
+                  data-tooltip="再読み込み"
+                >
+                  {reloadStatus === 'reloading' ? '⏳' : reloadStatus === 'done' ? '✓' : reloadStatus === 'error' ? '⚠' : '🔄'}
+                </button>
                 <div className="toolbar-separator" />
-                <button className="toolbar-btn" onClick={handleOpenFile} title="ファイルを開く (⌘O)">📂</button>
-                <button className="toolbar-btn" onClick={handleToggleSearch} title="検索・置換 (⌘F)">🔍</button>
-                <button className="toolbar-btn" onClick={handleDownload} title="ダウンロード (⌘⇧S)">📥</button>
-                <button className="toolbar-btn" onClick={handleToggleMdPreview} title="MDプレビュー (⌘⇧M)" disabled={activeDoc.language !== 'md'}>📖</button>
-                <button className="toolbar-btn" onClick={handleToggleBookmark} title="ブックマーク (⌘⇧B)">🔖</button>
-                <button className="toolbar-btn" onClick={handleNextBookmark} title="次のブックマーク" disabled={bookmarks.size === 0}>⏭</button>
-                <button className="toolbar-btn" onClick={handleInsertHeader} title="日付ヘッダー (⌘⇧L)">📅</button>
+                <button className="toolbar-btn" onClick={handleOpenFile} data-tooltip="ファイルを開く (⌘O)">📂</button>
+                <button className="toolbar-btn" onClick={handleToggleSearch} data-tooltip="検索・置換 (⌘F)">🔍</button>
+                <button className="toolbar-btn" onClick={handleDownload} data-tooltip="ダウンロード (⌘⇧S)">📥</button>
+                <button className="toolbar-btn" onClick={handleToggleMdPreview} data-tooltip="MDプレビュー (⌘⇧M)" disabled={activeDoc.language !== 'md'}>📖</button>
+                <button className="toolbar-btn" onClick={handleToggleBookmark} data-tooltip="ブックマーク (⌘⇧B)">🔖</button>
+                <button className="toolbar-btn" onClick={handleNextBookmark} data-tooltip="次のブックマーク" disabled={bookmarks.size === 0}>⏭</button>
+                <button className="toolbar-btn" onClick={handleInsertHeader} data-tooltip="日付ヘッダー (⌘⇧L)">📅</button>
                 <div className="toolbar-separator" />
-                <button className="toolbar-btn" onClick={handleFontSizeDown} title="フォント縮小 (⌘-)">A-</button>
-                <button className="toolbar-btn" onClick={handleFontSizeUp} title="フォント拡大 (⌘+)">A+</button>
+                <button className="toolbar-btn" onClick={handleFontSizeDown} data-tooltip="フォント縮小 (⌘-)">A-</button>
+                <button className="toolbar-btn" onClick={handleFontSizeUp} data-tooltip="フォント拡大 (⌘+)">A+</button>
                 <div className="toolbar-separator" />
-                <button className="toolbar-btn" onClick={handleToggleAiPanel} title="AI Assistant (⌘/)">🤖</button>
+                <button className="toolbar-btn" onClick={handleToggleAiPanel} data-tooltip="AI Assistant (⌘/)">🤖</button>
               </div>
 
               <SearchBar

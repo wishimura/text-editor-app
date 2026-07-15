@@ -1657,6 +1657,43 @@ html, body {
   opacity: 0.7;
 }
 
+.reload-btn.done {
+  color: var(--green);
+}
+
+.reload-btn.error {
+  color: var(--red, #e55);
+}
+
+.reload-btn.reloading {
+  opacity: 0.7;
+}
+
+/* Toolbar Tooltips */
+.toolbar-btn[data-tooltip] {
+  position: relative;
+}
+
+.toolbar-btn[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+  padding: 4px 10px;
+  background: var(--bg-darkest);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  animation: fadeIn 0.1s ease;
+}
+
 .toolbar-separator {
   width: 1px;
   height: 18px;

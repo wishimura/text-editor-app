@@ -1657,6 +1657,55 @@ html, body {
   opacity: 0.7;
 }
 
+.save-btn.conflict {
+  color: var(--orange, #ffb86c);
+  animation: conflictPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes conflictPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Conflict Banner */
+.conflict-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: rgba(255, 184, 108, 0.15);
+  border-bottom: 1px solid var(--orange, #ffb86c);
+  font-size: 13px;
+  color: var(--orange, #ffb86c);
+  flex-shrink: 0;
+  animation: fadeIn 0.2s ease;
+}
+
+.conflict-btn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-light);
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.conflict-btn:hover {
+  background: var(--bg-hover);
+}
+
+.conflict-btn-danger {
+  border-color: var(--orange, #ffb86c);
+  color: var(--orange, #ffb86c);
+}
+
+.conflict-btn-danger:hover {
+  background: rgba(255, 184, 108, 0.2);
+}
+
 .reload-btn.done {
   color: var(--green);
 }

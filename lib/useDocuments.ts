@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { getSupabase } from './supabase';
 import { Document, getLangFromTitle } from './types';
 
-export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'conflict';
 export type ReloadStatus = 'idle' | 'reloading' | 'done' | 'error';
 
 export function useDocuments() {
@@ -17,7 +17,9 @@ export function useDocuments() {
   const [reloadStatus, setReloadStatus] = useState<ReloadStatus>('idle');
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const localContentRef = useRef<Map<string, string>>(new Map());
+  const serverUpdatedAtRef = useRef<Map<string, string>>(new Map());
   const restoredRef = useRef(false);
+  const lastHiddenAtRef = useRef(0);
 
   const fetchDocuments = useCallback(async () => {
     setIsLoading(true);
@@ -38,7 +40,10 @@ export function useDocuments() {
     const { data, error } = result;
     if (!error && data) {
       setDocuments(data);
-      data.forEach(doc => localContentRef.current.set(doc.id, doc.content));
+      data.forEach(doc => {
+        localContentRef.current.set(doc.id, doc.content);
+        serverUpdatedAtRef.current.set(doc.id, doc.updated_at);
+      });
 
       if (!restoredRef.current) {
         restoredRef.current = true;
@@ -175,19 +180,39 @@ export function useDocuments() {
     localContentRef.current.set(id, content);
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    if (saveStatusRef.current !== 'saving') {
+    if (saveStatusRef.current !== 'saving' && saveStatusRef.current !== 'conflict') {
       saveStatusRef.current = 'saving';
       setSaveStatus('saving');
     }
+    if (saveStatusRef.current === 'conflict') return;
 
     saveTimerRef.current = setTimeout(async () => {
+      const knownUpdatedAt = serverUpdatedAtRef.current.get(id);
+      if (knownUpdatedAt) {
+        const { data: serverDoc } = await getSupabase()
+          .from('documents')
+          .select('updated_at')
+          .eq('id', id)
+          .single();
+        if (serverDoc && serverDoc.updated_at !== knownUpdatedAt) {
+          saveStatusRef.current = 'conflict';
+          setSaveStatus('conflict');
+          return;
+        }
+      }
+
       setDocuments(prev =>
         prev.map(d => d.id === id ? { ...d, content } : d)
       );
+      const now = new Date().toISOString();
       const { error } = await getSupabase()
         .from('documents')
-        .update({ content, updated_at: new Date().toISOString() })
+        .update({ content, updated_at: now })
         .eq('id', id);
+
+      if (!error) {
+        serverUpdatedAtRef.current.set(id, now);
+      }
 
       const next = error ? 'error' : 'saved';
       saveStatusRef.current = next;
@@ -211,10 +236,29 @@ export function useDocuments() {
       if (content !== undefined) {
         saveStatusRef.current = 'saving';
         setSaveStatus('saving');
+
+        const knownUpdatedAt = serverUpdatedAtRef.current.get(activeDocId);
+        if (knownUpdatedAt) {
+          const { data: serverDoc } = await getSupabase()
+            .from('documents')
+            .select('updated_at')
+            .eq('id', activeDocId)
+            .single();
+          if (serverDoc && serverDoc.updated_at !== knownUpdatedAt) {
+            saveStatusRef.current = 'conflict';
+            setSaveStatus('conflict');
+            return;
+          }
+        }
+
+        const now = new Date().toISOString();
         const { error } = await getSupabase()
           .from('documents')
-          .update({ content, updated_at: new Date().toISOString() })
+          .update({ content, updated_at: now })
           .eq('id', activeDocId);
+        if (!error) {
+          serverUpdatedAtRef.current.set(activeDocId, now);
+        }
         const next = error ? 'error' : 'saved';
         saveStatusRef.current = next;
         setSaveStatus(next);
@@ -224,6 +268,11 @@ export function useDocuments() {
 
   const reloadDocuments = useCallback(async () => {
     setReloadStatus('reloading');
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = undefined;
+    }
+
     let result = await getSupabase()
       .from('documents')
       .select('*')
@@ -240,7 +289,14 @@ export function useDocuments() {
     const { data, error } = result;
     if (!error && data) {
       setDocuments(data);
-      data.forEach(doc => localContentRef.current.set(doc.id, doc.content));
+      data.forEach(doc => {
+        localContentRef.current.set(doc.id, doc.content);
+        serverUpdatedAtRef.current.set(doc.id, doc.updated_at);
+      });
+      if (saveStatusRef.current === 'conflict') {
+        saveStatusRef.current = 'idle';
+        setSaveStatus('idle');
+      }
       setReloadStatus('done');
       setTimeout(() => setReloadStatus('idle'), 2000);
     } else {
@@ -258,13 +314,39 @@ export function useDocuments() {
     }
   }, []);
 
-  // Flush pending saves when page goes to background or closes
+  const forceOverwrite = useCallback(async () => {
+    if (!activeDocId) return;
+    const content = localContentRef.current.get(activeDocId);
+    if (content === undefined) return;
+    saveStatusRef.current = 'saving';
+    setSaveStatus('saving');
+    const now = new Date().toISOString();
+    const { error } = await getSupabase()
+      .from('documents')
+      .update({ content, updated_at: now })
+      .eq('id', activeDocId);
+    if (!error) {
+      serverUpdatedAtRef.current.set(activeDocId, now);
+    }
+    const next = error ? 'error' : 'saved';
+    saveStatusRef.current = next;
+    setSaveStatus(next);
+    if (!error) {
+      setTimeout(() => {
+        saveStatusRef.current = 'idle';
+        setSaveStatus('idle');
+      }, 2000);
+    }
+  }, [activeDocId]);
+
+  // Flush pending saves when page goes to background; auto-reload when returning
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden' && saveTimerRef.current) {
+      if (document.visibilityState === 'hidden') {
+        lastHiddenAtRef.current = Date.now();
+        if (!saveTimerRef.current) return;
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = undefined;
-        // Use sendBeacon for reliability on page hide
         const docId = activeDocId;
         if (!docId) return;
         const content = localContentRef.current.get(docId);
@@ -272,10 +354,9 @@ export function useDocuments() {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
         const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
         if (!supabaseUrl || !supabaseKey) return;
+        const now = new Date().toISOString();
         const url = `${supabaseUrl}/rest/v1/documents?id=eq.${docId}`;
-        const body = JSON.stringify({ content, updated_at: new Date().toISOString() });
-        const blob = new Blob([body], { type: 'application/json' });
-        // sendBeacon doesn't support custom headers, so fall back to fetch with keepalive
+        const body = JSON.stringify({ content, updated_at: now });
         fetch(url, {
           method: 'PATCH',
           headers: {
@@ -286,12 +367,20 @@ export function useDocuments() {
           },
           body,
           keepalive: true,
+        }).then(() => {
+          serverUpdatedAtRef.current.set(docId, now);
         }).catch(() => {});
+      } else if (document.visibilityState === 'visible') {
+        const hiddenFor = Date.now() - lastHiddenAtRef.current;
+        if (hiddenFor > 5000) {
+          reloadDocuments();
+        }
       }
     };
 
     const handleBeforeUnload = () => {
       if (saveTimerRef.current) {
+        lastHiddenAtRef.current = Date.now();
         handleVisibilityChange();
       }
     };
@@ -302,7 +391,7 @@ export function useDocuments() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [activeDocId]);
+  }, [activeDocId, reloadDocuments]);
 
   const renameDocument = useCallback(async (id: string, newTitle: string) => {
     const language = getLangFromTitle(newTitle);
@@ -347,6 +436,7 @@ export function useDocuments() {
     emptyTrash,
     updateContent,
     flushSave,
+    forceOverwrite,
     refetch: fetchDocuments,
     reloadDocuments,
     reloadStatus,

@@ -32,6 +32,7 @@ export default function Editor() {
     emptyTrash,
     updateContent,
     flushSave,
+    forceOverwrite,
     refetch,
     reloadDocuments,
     reloadStatus,
@@ -415,14 +416,23 @@ export default function Editor() {
 
           {activeDoc ? (
             <>
+              {/* Conflict Banner */}
+              {saveStatus === 'conflict' && (
+                <div className="conflict-banner">
+                  <span>⚠ 他のデバイスで更新されています。</span>
+                  <button className="conflict-btn" onClick={reloadDocuments}>サーバーの内容を読み込む</button>
+                  <button className="conflict-btn conflict-btn-danger" onClick={forceOverwrite}>自分の内容で上書きする</button>
+                </div>
+              )}
+
               {/* Editor Toolbar */}
               <div className="editor-toolbar">
                 <button
-                  className={`toolbar-btn save-btn${saveStatus === 'saving' ? ' saving' : ''}${saveStatus === 'saved' ? ' saved' : ''}${saveStatus === 'error' ? ' error' : ''}`}
+                  className={`toolbar-btn save-btn${saveStatus === 'saving' ? ' saving' : ''}${saveStatus === 'saved' ? ' saved' : ''}${saveStatus === 'error' ? ' error' : ''}${saveStatus === 'conflict' ? ' conflict' : ''}`}
                   onClick={flushSave}
                   data-tooltip="保存 (⌘S)"
                 >
-                  {saveStatus === 'saving' ? '⏳' : saveStatus === 'saved' ? '✓' : saveStatus === 'error' ? '⚠' : '💾'}
+                  {saveStatus === 'saving' ? '⏳' : saveStatus === 'saved' ? '✓' : saveStatus === 'error' ? '⚠' : saveStatus === 'conflict' ? '⚠' : '💾'}
                 </button>
                 <button
                   className={`toolbar-btn reload-btn${reloadStatus === 'reloading' ? ' reloading' : ''}${reloadStatus === 'done' ? ' done' : ''}${reloadStatus === 'error' ? ' error' : ''}`}

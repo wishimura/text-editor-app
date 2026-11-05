@@ -140,16 +140,44 @@ export default function Editor() {
 
   const handleInsertHeader = useCallback(() => {
     if (!activeDocId) return;
-    const currentContent = editorTextareaRef.current?.value ?? '';
+    const ta = editorTextareaRef.current;
     const today = new Date();
     const dateStr = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
     const separator = '----------------------------------------';
-    const beforeCursor = `\n\n${separator}\n${dateStr} `;
+
+    if (!ta) {
+      // Fallback: no textarea mounted, append to the end of the stored content
+      const currentContent = activeDoc?.content ?? '';
+      const beforeCursor = `\n\n${separator}\n${dateStr} `;
+      updateContent(activeDocId, currentContent + beforeCursor + `\n${separator}\n`);
+      return;
+    }
+
+    // Insert the date block at the current cursor position (replacing any selection)
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const prevChar = start > 0 ? ta.value[start - 1] : '\n';
+    const lead = prevChar === '\n' ? '' : '\n';
+    const beforeCursor = `${lead}${separator}\n${dateStr} `;
     const afterCursor = `\n${separator}\n`;
-    const newContent = currentContent + beforeCursor + afterCursor;
-    updateContent(activeDocId, newContent);
-    setCursorInsertPos(currentContent.length + beforeCursor.length);
-  }, [activeDocId, updateContent]);
+    const text = beforeCursor + afterCursor;
+
+    ta.focus();
+    ta.setSelectionRange(start, end);
+    // execCommand keeps the native undo stack (Cmd+Z) working; fall back if unsupported
+    let inserted = false;
+    try {
+      inserted = document.execCommand('insertText', false, text);
+    } catch {
+      inserted = false;
+    }
+    if (!inserted) {
+      ta.setRangeText(text, start, end, 'end');
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    const caret = start + beforeCursor.length;
+    ta.setSelectionRange(caret, caret);
+  }, [activeDocId, activeDoc, updateContent]);
 
   const handleDownload = useCallback(() => {
     if (!activeDoc) return;

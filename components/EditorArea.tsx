@@ -203,8 +203,18 @@ function EditorAreaInner({ content, onChange, onCursorChange, onListeningChange,
 
     if (e.nativeEvent.isComposing) return;
 
-    // Enter virtual mode for large docs on printable key
-    if (!isVirtualRef.current && ta.value.length > VIRTUAL_THRESHOLD && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+    // Enter virtual mode for large docs on printable key.
+    // Android soft keyboards (Gboard etc.) report every keystroke as
+    // key="Unidentified" / keyCode 229, so treat those as printable too —
+    // otherwise the whole huge document stays attached to the IME and
+    // typing on Android stops showing up.
+    const isEditKey =
+      e.key.length === 1 ||
+      e.key === 'Unidentified' ||
+      e.keyCode === 229 ||
+      e.key === 'Enter' ||
+      e.key === 'Backspace';
+    if (!isVirtualRef.current && ta.value.length > VIRTUAL_THRESHOLD && isEditKey && !e.ctrlKey && !e.metaKey) {
       enterVirtualMode(ta);
       resetVirtualTimer();
       // Don't return — let the key be processed on the now-small textarea
